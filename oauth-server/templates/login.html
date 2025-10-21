@@ -1,0 +1,24 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Bomboclat App</title>
+</head>
+
+<body>
+  <h1>Login to Bomboclat App</h1>
+  {{ if .Success }}
+  <h1>Thanks for logging in</h1>
+  {{ else }}
+  <form method="POST">
+    <label for="email">Enter your email: </label>
+    <input id="email" name="email" type="email" />
+    <label for="password">Enter your password: </label>
+    <input id="password" name="password" type="password" />
+    <button type="submit">LOGIN</button>
+  </form>
+  {{ end }}
+</body>
+
+</html>

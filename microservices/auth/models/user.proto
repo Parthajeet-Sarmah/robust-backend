@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+option go_package = "./user;user";
+
+package auth;
+
+service UserService {
+  rpc GetUser     (GetUserRequest) returns (UserResponse);
+  rpc CreateUser  (CreateUserRequest) returns (UserResponse);
+  rpc ListAllUsers   (ListUserRequest) returns (ListUsersResponse);
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string age = 3;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message CreateUserRequest {
+  string id = 1;
+  string name = 2;
+  string age = 3;
+}
+
+message UserResponse {
+  string id = 1;
+  string name = 2;
+  string age = 3;
+}
+
+message ListUserRequest {}
+
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+

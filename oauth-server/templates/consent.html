@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consent</title>
+</head>
+
+<body>
+  <h1>Permission for the below scopes</h1>
+  <h3>{{ .Scope }}</h3>
+  <form method="POST" action="/authorize/consent?next={{ .Next }}">
+    <input type="hidden" name="client_id" value="{{ .ClientId }}" />
+    <input type="hidden" name="redirect_uri" value="{{ .RedirectUri }}" />
+    <button name="decision" value="allow">Allow</button>
+    <button name="decision" value="deny">Deny</button>
+  </form>
+</body>
+
+</html>
