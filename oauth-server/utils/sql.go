@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
 )
 
 var (
@@ -18,8 +17,6 @@ var (
 )
 
 func CreateDBConnPool() (*custom_types.Postgres, error) {
-
-	godotenv.Load()
 
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")
@@ -137,13 +134,13 @@ func CreateAuthCodesTable(pg *custom_types.Postgres) error {
 func CreateAccessTokensTable(pg *custom_types.Postgres) error {
 	query := `CREATE TABLE IF NOT EXISTS access_tokens (
 		token TEXT,
-		user_id INTEGER,
+		user_id UUID,
 		client_id UUID,
 		scopes TEXT,
 		expires_at TIMESTAMP,
 		created_at TIMESTAMP DEFAULT now(),
-		revoked BOOLEAN,
-		FOREIGN KEY (user_id) REFERENCES users(id),
+		revoked BOOLEAN DEFAULT false,
+		FOREIGN KEY (user_id) REFERENCES users(uuid),
 		FOREIGN KEY (client_id) REFERENCES clients(client_id)
 	)`
 
@@ -159,13 +156,13 @@ func CreateAccessTokensTable(pg *custom_types.Postgres) error {
 func CreateRefreshTokensTable(pg *custom_types.Postgres) error {
 	query := `CREATE TABLE IF NOT EXISTS refresh_tokens (
 		token TEXT,
-		user_id INTEGER,
+		user_id UUID,
 		client_id UUID,
 		scopes TEXT,
 		expires_at TIMESTAMP,
 		created_at TIMESTAMP DEFAULT now(),
-		revoked BOOLEAN,
-		FOREIGN KEY (user_id) REFERENCES users(id),
+		revoked BOOLEAN DEFAULT false,
+		FOREIGN KEY (user_id) REFERENCES users(uuid),
 		FOREIGN KEY (client_id) REFERENCES clients(client_id)
 	)`
 

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bomboclat Auth Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --fg: #f9f9f9;
+      --border: #1f1f1f;
+      --accent: #ffffff;
+      --radius: 0.75rem;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Glowing background elements */
+    .glow {
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle at center, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+      filter: blur(120px);
+      border-radius: 50%;
+      animation: float 12s ease-in-out infinite alternate;
+    }
+
+    .glow:nth-child(1) {
+      top: -100px;
+      left: -150px;
+    }
+
+    .glow:nth-child(2) {
+      bottom: -100px;
+      right: -150px;
+      animation-delay: 3s;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(0px) translateX(0px);
+      }
+
+      100% {
+        transform: translateY(-40px) translateX(40px);
+      }
+    }
+
+    .container {
+      z-index: 2;
+      text-align: center;
+    }
+
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius);
+      padding: 1rem 2.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+    }
+
+    button:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.15);
+    }
+
+    button:active {
+      transform: scale(0.98);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+    }
+
+    .label {
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.55);
+      margin-top: 1rem;
+    }
+
+    .success {
+      margin-top: 1.5rem;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .success.visible {
+      opacity: 1;
+      color: #00ff90;
+    }
+
+    .error.visible {
+      opacity: 1;
+      color: #ff4b4b;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="glow"></div>
+  <div class="glow"></div>
+
+  <div class="container">
+    <button id="loginButton">Login with Bomboclat Auth</button>
+    <div class="label">Secure OAuth 2.0 Authorization</div>
+    <div class="success" id="successMsg">✅ Logged in successfully!</div>
+    <div class="success error" id="errorMsg">❌ Login failed or canceled.</div>
+  </div>
+
+  <script>
+    const button = document.getElementById("loginButton");
+    const successMsg = document.getElementById("successMsg");
+    const errorMsg = document.getElementById("errorMsg");
+
+    button.addEventListener("click", () => {
+      successMsg.classList.remove("visible");
+      errorMsg.classList.remove("visible");
+
+      const width = 480;
+      const height = 640;
+      const left = (window.screen.width / 2) - (width / 2);
+      const top = (window.screen.height / 2) - (height / 2);
+
+      // Your OAuth /authorize endpoint — adjust as needed
+      const clientId = "420b7a3b-0dbd-4b45-b8e9-f116d7958aa1";
+      const redirectUri = `http://localhost:5500/oauth/callback.html`;
+      const state = "hello123";
+      const scope = "profile email";
+
+      const authUrl =
+        `http://localhost:9000/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&random_state=${state}`;
+
+      const popup = window.open(
+        authUrl,
+        "BomboclatAuthWindow",
+        `width=${width},height=${height},top=${top},left=${left},resizable=no,scrollbars=yes,status=no`
+      );
+
+      // Listen for messages from popup
+      window.addEventListener("message", (event) => {
+        if (event.origin !== window.location.origin) return; // optional origin check
+
+        if (event.data.type === "bomboclat-auth-success") {
+          const {code, state: returnedState} = event.data;
+          if (returnedState !== state) {
+            errorMsg.textContent = "⚠️ State mismatch — possible CSRF attack!";
+            errorMsg.classList.add("visible");
+            return;
+          }
+
+          successMsg.classList.add("visible");
+          console.log("Authorization Code:", code);
+
+          // Example: exchange code for token
+          // fetch("/token", { method: "POST", body: JSON.stringify({ code, redirect_uri: redirectUri }) });
+
+          if (popup) popup.close();
+        }
+
+        if (event.data.type === "bomboclat-auth-error") {
+          errorMsg.textContent = event.data.message || "❌ Login failed.";
+          errorMsg.classList.add("visible");
+          if (popup) popup.close();
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

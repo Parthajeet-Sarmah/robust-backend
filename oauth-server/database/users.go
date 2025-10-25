@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"local/bomboclat-oauth-server/models"
 	custom_types "local/bomboclat-oauth-server/types"
 
@@ -19,11 +18,9 @@ func FindUserByEmailAndPasswordHash(pg *custom_types.Postgres, ctx context.Conte
 		return nil, err
 	}
 
-	fmt.Println(email)
-
 	defer rows.Close()
 
-	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByPos[models.UserDatabaseModel])
+	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.UserDatabaseModel])
 
 	if err != nil {
 		return nil, err

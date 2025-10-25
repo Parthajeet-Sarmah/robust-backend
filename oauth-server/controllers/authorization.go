@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -72,8 +73,7 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(*callback_url))
+	http.Redirect(w, r, *callback_url, http.StatusFound)
 }
 
 func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWriter, r *http.Request) {
@@ -141,8 +141,33 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (controller *AuthorizationController) GenerateToken() {
+func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, r *http.Request) {
 
+	m := &models.TokenModelInput{}
+	if err := utils.DecodeJSONBody(w, r, &m); err != nil {
+		if _, ok := err.(*utils.MalformedRequest); ok {
+			_err := err.(*utils.MalformedRequest)
+			http.Error(w, _err.Msg, _err.Status)
+			return
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	token, err := services.AuthorizationService.GenerateToken(m)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(token); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (controller *AuthorizationController) Introspect() {

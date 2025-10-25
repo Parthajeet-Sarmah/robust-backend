@@ -8,9 +8,13 @@ import (
 	"local/bomboclat-oauth-server/routers"
 	"local/bomboclat-oauth-server/services"
 	utils "local/bomboclat-oauth-server/utils"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+
+	godotenv.Load()
 
 	//Init database and inject to services
 	dbPool, err := utils.CreateDBConnPool()
@@ -31,12 +35,13 @@ func main() {
 	//Sub routes
 	authorizationRouter := routers.AuthorizationHandler().RegisterRoutes()
 	userRouter := routers.UserHandler().RegisterRoutes()
+	clientRouter := routers.ClientHandler().RegisterRoutes()
 
 	router := http.NewServeMux()
 
 	router.Handle("/authorize/", http.StripPrefix("/authorize", authorizationRouter))
 	router.Handle("/users/", http.StripPrefix("/users", userRouter))
-	//router.Handle("/clients/", http.StripPrefix("/clients", clientRouter))
+	router.Handle("/clients/", http.StripPrefix("/clients", clientRouter))
 	//router.Handle("/introspect/", http.StripPrefix("/introspect", introspectRouter))
 
 	log.Println("Starting server on port 9000")

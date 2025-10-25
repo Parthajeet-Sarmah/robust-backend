@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Auth Callback</title>
+</head>
+<body>
+    <script>
+        // Function to extract query parameters from the URL
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                code: params.get('code'),
+                state: params.get('state'),
+                error: params.get('error'), // Check for errors too
+                error_description: params.get('error_description')
+            };
+        }
+
+        const params = getQueryParams();
+        const opener = window.opener; // Reference to the main window
+
+        if (!opener) {
+            // Handle case where popup was opened without an opener
+            document.body.textContent = "Error: This page should be opened via a popup.";
+        } else if (params.code && params.state) {
+            // SUCCESS: Post message to the main window
+            opener.postMessage({
+                type: "bomboclat-auth-success",
+                code: params.code,
+                state: params.state
+            }, window.location.origin);
+        } else if (params.error) {
+            // ERROR: Post error message to the main window (e.g., user denied access)
+            opener.postMessage({
+                type: "bomboclat-auth-error",
+                message: params.error_description || `OAuth error: ${params.error}`
+            }, window.location.origin);
+        } else {
+            // General failure (e.g., missing code/error parameters)
+            opener.postMessage({
+                type: "bomboclat-auth-error",
+                message: "Login process completed but missing authorization code."
+            }, window.location.origin);
+        }
+
+        // Always close the popup after communication
+        window.close();
+    </script>
+    <p>Processing login... please wait.</p>
+</body>
+</html>

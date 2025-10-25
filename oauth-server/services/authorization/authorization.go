@@ -3,16 +3,21 @@ package authorization
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
 	"local/bomboclat-oauth-server/database"
 	"local/bomboclat-oauth-server/models"
 	utils "local/bomboclat-oauth-server/utils"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -86,7 +91,7 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 		CodeChallengeMethod: m.CodeChallengeMethod,
 	}
 
-	if err := database.CreateAuthCodeEntry(as.DBConn, authCodeData); err != nil {
+	if err := database.CreateAuthCodeEntry(as.DBConn, &authCodeData); err != nil {
 		return nil, err
 	}
 
@@ -124,8 +129,124 @@ func (as *AuthorizationService) AuthorizeConsent(m models.AuthorizationConsentMo
 	return errors.New("Wrong method")
 }
 
-func (as *AuthorizationService) GenerateToken() {
+func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*models.TokenResponse, error) {
 
+	if m.GrantType == "authorization_code" {
+		//Validate the client with the respective ClientId
+		client, err := database.FindClientById(as.DBConn, context.Background(), m.ClientId)
+
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, &utils.ClientNotFoundError{}
+			}
+			log.Print(err)
+			return nil, err
+		}
+
+		if client == nil {
+			return nil, &utils.ClientNotFoundError{}
+		}
+
+		if client.RedirectUri != nil && *client.RedirectUri != m.RedirectUri {
+			log.Print("Redirect URI for the client does not match!")
+			return nil, &utils.RedirectURIMismatchError{}
+		}
+
+		//Validate the code with the ClientId and Redirect_Uri
+		codeData, err := database.GetAuthCode(as.DBConn, m.Code)
+
+		if err != nil {
+			log.Print(err)
+			return nil, &utils.CouldNotFetchAuthCode{}
+		}
+
+		log.Print(time.Now().UTC(), codeData.ExpiresAt, time.Now().UTC().Compare(codeData.ExpiresAt))
+
+		if codeData.ClientId != m.ClientId {
+			return nil, &utils.ClientIdMismatchError{}
+		} else if codeData.RedirectUri != m.RedirectUri {
+			return nil, &utils.RedirectURIMismatchError{}
+		} else if time.Now().UTC().Compare(codeData.ExpiresAt) == 1 {
+			return nil, &utils.ExpiredAuthCodeError{}
+		}
+
+		//Verify the PKCE challenge
+		var codeChallenge string
+
+		if m.CodeChallengeMethod == "S256" {
+			hash := sha256.Sum256([]byte(m.CodeVerifier))
+			codeChallenge = base64.RawURLEncoding.EncodeToString(hash[:])
+		} else {
+			codeChallenge = m.CodeVerifier
+		}
+
+		if codeChallenge != codeData.CodeChallenge {
+			return nil, &utils.CodeChallengeDoesNotMatchError{}
+		}
+
+		// NOTE: Generate access and refresh token (optionally) and ID token (if OIDC)
+		expiresAt := time.Now().Add(time.Hour) // 1 hour
+		tokenClaims := jwt.MapClaims{
+			"sub":   codeData.UserId,
+			"aud":   m.ClientId,
+			"exp":   expiresAt.Unix(),
+			"iat":   time.Now().Unix(),
+			"scope": codeData.Scopes,
+		}
+
+		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims)
+		accessToken, err := jwtToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+		if err != nil {
+			return nil, err
+		}
+
+		randomBytes := make([]byte, 64)
+
+		if _, err := rand.Read(randomBytes); err != nil {
+			log.Print("Error while reading random bytes for generating code!")
+			panic(err)
+		}
+
+		refreshToken := hex.EncodeToString(randomBytes)
+
+		// NOTE: Save refresh token
+		if err := database.InsertRefreshToken(as.DBConn, &models.RefreshTokenModel{
+			Token:    refreshToken,
+			ClientId: m.ClientId,
+			UserId:   codeData.UserId,
+			Scopes:   codeData.Scopes,
+		}); err != nil {
+			return nil, err
+		}
+
+		if err := database.UpdateAuthCodeEntryUsedStatus(as.DBConn, m.Code); err != nil {
+			return nil, &utils.AuthCodeUsedUpdateError{}
+		}
+
+		// NOTE: Mark auth code as used
+		if err := database.UpdateAuthCodeEntryUsedStatus(as.DBConn, m.Code); err != nil {
+			return nil, &utils.AuthCodeUsedUpdateError{}
+		}
+
+		// NOTE: Save access and refresh token
+		if err := database.InsertAccessToken(as.DBConn, &models.AccessTokenModel{
+			Token:    refreshToken,
+			ClientId: m.ClientId,
+			UserId:   codeData.UserId,
+			Scopes:   codeData.Scopes,
+		}); err != nil {
+			return nil, err
+		}
+
+		return &models.TokenResponse{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+			TokenType:    "Bearer",
+			ExpiresIn:    int(time.Until(expiresAt).Seconds()),
+		}, nil
+	}
+
+	return nil, &utils.InvalidGrantType{}
 }
 
 func (as *AuthorizationService) Introspect() {

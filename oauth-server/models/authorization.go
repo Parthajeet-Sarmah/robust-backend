@@ -32,15 +32,52 @@ type AuthCodeModelInput struct {
 }
 
 type AuthCodeModel struct {
-	Id                  string
-	Code                string
-	UserId              string
-	ClientId            string
-	RedirectUri         string
-	Scopes              string
-	ExpiresAt           time.Time
-	CreatedAt           time.Time
-	CodeChallenge       string
-	CodeChallengeMethod string
-	Used                bool
+	Id                  string    `db:"id"`
+	Code                string    `db:"code"`
+	UserId              string    `db:"user_id"`
+	ClientId            string    `db:"client_id"`
+	RedirectUri         string    `db:"redirect_uri"`
+	Scopes              string    `db:"scopes"`
+	ExpiresAt           time.Time `db:"expires_at"`
+	CodeChallenge       string    `db:"code_challenge"`
+	CodeChallengeMethod string    `db:"code_challenge_method"`
+	Used                bool      `db:"used"`
+	CreatedAt           time.Time `db:"created_at"`
+}
+
+type TokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	TokenType    string `json:"tokenType"`
+	ExpiresIn    int    `json:"expiresIn"`
+}
+
+type TokenModelInput struct {
+	GrantType           string `json:"grant_type"`
+	Code                string `json:"code"`
+	RedirectUri         string `json:"redirect_uri"`
+	ClientId            string `json:"client_id"`
+	ClientSecretHash    string `json:"client_secret_hash"`
+	CodeVerifier        string `json:"code_verifier"`
+	CodeChallengeMethod string `json:"code_challenge_method"`
+}
+
+type AccessTokenModel struct {
+	Token     string
+	UserId    string
+	ClientId  string
+	Scopes    string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+	Revoked   bool
+}
+
+type RefreshTokenModel struct {
+	Token     string
+	UserId    string
+	ClientId  string
+	Scopes    string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+	Revoked   bool
 }

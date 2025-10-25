@@ -23,7 +23,7 @@ func FindClientById(pg *custom_types.Postgres, ctx context.Context, client_id st
 
 	defer rows.Close()
 
-	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByPos[models.ClientDatabaseModel])
+	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.ClientDatabaseModel])
 
 	if err != nil {
 		return nil, err
