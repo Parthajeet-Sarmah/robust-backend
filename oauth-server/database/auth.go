@@ -10,22 +10,25 @@ import (
 
 func InsertAccessToken(pg *custom_types.Postgres, m *models.AccessTokenModel) error {
 	query := `INSERT INTO access_tokens (
-		token,
+		token_hash,
 		user_id,
 		client_id,
-		scopes
+		scopes,
+		expires_at
 	) VALUES (
-		@token,
+		@tokenHash,
 		@userId,
 		@clientId,
-		@scopes
+		@scopes,
+		@expiresAt
 	)`
 
 	args := pgx.NamedArgs{
-		"token":    m.Token,
-		"userId":   m.UserId,
-		"clientId": m.ClientId,
-		"scopes":   m.Scopes,
+		"tokenHash": m.TokenHash,
+		"userId":    m.UserId,
+		"clientId":  m.ClientId,
+		"scopes":    m.Scopes,
+		"expiresAt": m.ExpiresAt,
 	}
 
 	_, err := pg.DB.Exec(context.Background(), query, args)
@@ -37,25 +40,138 @@ func InsertAccessToken(pg *custom_types.Postgres, m *models.AccessTokenModel) er
 	return nil
 }
 
+func RevokeAccessToken(pg *custom_types.Postgres, tokenHash string) error {
+
+	query := `UPDATE access_tokens SET revoked = true WHERE token_hash = @tokenHash`
+	args := pgx.NamedArgs{
+		"tokenHash": tokenHash,
+	}
+
+	_, err := pg.DB.Exec(context.Background(), query, args)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func UpdateAccessToken(pg *custom_types.Postgres, m *models.AccessTokenModel) error {
+
+	query := `UPDATE access_tokens SET
+		token_hash = @tokenHash,
+		expires_at = @expiresAt,
+		scopes = @scopes
+	WHERE user_id = @userId AND client_id = @clientId`
+
+	args := pgx.NamedArgs{
+		"tokenHash": m.TokenHash,
+		"userId":    m.UserId,
+		"clientId":  m.ClientId,
+		"scopes":    m.Scopes,
+		"expiresAt": m.ExpiresAt,
+	}
+
+	_, err := pg.DB.Exec(context.Background(), query, args)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 func InsertRefreshToken(pg *custom_types.Postgres, m *models.RefreshTokenModel) error {
 
 	query := `INSERT INTO refresh_tokens (
-		token,
+		token_hash,
 		user_id,
 		client_id,
-		scopes
+		scopes,
+		expires_at
 	) VALUES (
-		@token,
+		@tokenHash,
 		@userId,
 		@clientId,
-		@scopes
+		@scopes,
+		@expiresAt
 	)`
 
 	args := pgx.NamedArgs{
-		"token":    m.Token,
-		"userId":   m.UserId,
-		"clientId": m.ClientId,
-		"scopes":   m.Scopes,
+		"tokenHash": m.TokenHash,
+		"userId":    m.UserId,
+		"clientId":  m.ClientId,
+		"scopes":    m.Scopes,
+		"expiresAt": m.ExpiresAt,
+	}
+
+	_, err := pg.DB.Exec(context.Background(), query, args)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func FindAccessToken(pg *custom_types.Postgres, accessTokenHash string) (*models.AccessTokenModel, error) {
+
+	query := `SELECT * FROM access_tokens WHERE token_hash = @tokenHash LIMIT 1`
+	args := pgx.NamedArgs{
+		"tokenHash": accessTokenHash,
+	}
+
+	rows, err := pg.DB.Query(context.Background(), query, args)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.AccessTokenModel])
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+
+}
+
+func FindRefreshToken(pg *custom_types.Postgres, refreshTokenHash string) (*models.RefreshTokenModel, error) {
+
+	query := `SELECT * FROM refresh_tokens WHERE token_hash = @tokenHash LIMIT 1`
+	args := pgx.NamedArgs{
+		"tokenHash": refreshTokenHash,
+	}
+
+	rows, err := pg.DB.Query(context.Background(), query, args)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.RefreshTokenModel])
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+}
+
+func UpdateRefreshTokenEntry(pg *custom_types.Postgres, oldTokenHash string, newTokenHash string) error {
+
+	query := `UPDATE refresh_tokens SET token_hash = @newTokenHash WHERE token_hash = @oldTokenHash`
+	args := pgx.NamedArgs{
+		"oldTokenHash": oldTokenHash,
+		"newTokenHash": newTokenHash,
 	}
 
 	_, err := pg.DB.Exec(context.Background(), query, args)

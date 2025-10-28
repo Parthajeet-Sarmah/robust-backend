@@ -42,7 +42,7 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 		CodeChallengeMethod: code_challenge_method,
 	}
 
-	userCookie, err := r.Cookie("session_id")
+	userCookie, _ := r.Cookie("session_id")
 
 	callback_url, err := services.AuthorizationService.AuthorizeUserAndGenerateCode(authRequestModelInput, userCookie)
 
@@ -158,7 +158,14 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 	token, err := services.AuthorizationService.GenerateToken(m)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		if _, ok := err.(*utils.RefreshTokenNotFoundError); ok {
+			_err := err.(*utils.RefreshTokenNotFoundError)
+			http.Error(w, _err.Msg, _err.Status)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
 		return
 	}
 
@@ -168,6 +175,29 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 	if err := json.NewEncoder(w).Encode(token); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (controller *AuthorizationController) RevokeToken(w http.ResponseWriter, r *http.Request) {
+
+	m := &models.RevokeTokenModel{}
+
+	if err := utils.DecodeJSONBody(w, r, &m); err != nil {
+		if _, ok := err.(*utils.MalformedRequest); ok {
+			_err := err.(*utils.MalformedRequest)
+			http.Error(w, _err.Msg, _err.Status)
+			return
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if err := services.AuthorizationService.RevokeToken(m); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (controller *AuthorizationController) Introspect() {

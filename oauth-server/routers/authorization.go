@@ -21,6 +21,7 @@ func (h *AuthorizationRouterHandler) RegisterRoutes() *http.ServeMux {
 	r.HandleFunc("GET /consent", controller.AuthorizeConsent)
 	r.HandleFunc("POST /consent", controller.AuthorizeConsent)
 	r.HandleFunc("POST /token", controller.GenerateToken)
+	r.HandleFunc("POST /revoke", controller.RevokeToken)
 	//r.HandleFunc("POST /authorize/consent", controller.AuthorizeConsent)
 
 	return r

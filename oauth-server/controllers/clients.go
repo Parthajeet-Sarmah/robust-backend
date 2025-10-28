@@ -9,14 +9,6 @@ import (
 
 type ClientController struct{}
 
-//	type ClientDatabaseModelInput struct {
-//		ClientSecretHash string
-//		RedirectUri      string
-//		AppName          string
-//		GrantTypes       []string
-//		LogoUrl          string
-//		JwksUri          string
-//		IsConfidential   bool
 func (controller ClientController) Register(w http.ResponseWriter, r *http.Request) {
 
 	var m models.ClientDatabaseModelInput

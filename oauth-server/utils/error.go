@@ -20,10 +20,15 @@ type UserNotFoundError struct{}
 type ClientNotFoundError struct{}
 
 type ExpiredAuthCodeError struct{}
+type ExpiredRefreshTokenError struct{}
 type AuthCodeUsedUpdateError struct{}
 type CodeChallengeDoesNotMatchError struct{}
 type UnknownError struct{}
 type InvalidGrantType struct{}
+type RefreshTokenNotFoundError struct {
+	Status int
+	Msg    string
+}
 
 type MalformedRequest struct {
 	Status int
@@ -50,6 +55,10 @@ func (e *ExpiredAuthCodeError) Error() string {
 	return "The auth code has expired!"
 }
 
+func (e *ExpiredRefreshTokenError) Error() string {
+	return "The refresh token has expired!"
+}
+
 func (e *AuthCodeUsedUpdateError) Error() string {
 	return "The authorization code could not be updated!"
 }
@@ -60,6 +69,10 @@ func (e *CouldNotFetchAuthCode) Error() string {
 
 func (e *InvalidGrantType) Error() string {
 	return "The grant type provided is not valid!"
+}
+
+func (e *RefreshTokenNotFoundError) Error() string {
+	return e.Msg
 }
 
 func (e *CouldNotConnectToDatabaseError) Error() string {
@@ -99,7 +112,7 @@ func (e *ClientIdNonExistentError) Error() string {
 }
 
 func (e *ClientIdMismatchError) Error() string {
-	return "The client id does not match with the code entry"
+	return "The client id does not match"
 }
 
 func (e *RedirectURIMismatchError) Error() string {

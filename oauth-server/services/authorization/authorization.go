@@ -131,7 +131,8 @@ func (as *AuthorizationService) AuthorizeConsent(m models.AuthorizationConsentMo
 
 func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*models.TokenResponse, error) {
 
-	if m.GrantType == "authorization_code" {
+	switch m.GrantType {
+	case "authorization_code":
 		//Validate the client with the respective ClientId
 		client, err := database.FindClientById(as.DBConn, context.Background(), m.ClientId)
 
@@ -160,8 +161,6 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 			return nil, &utils.CouldNotFetchAuthCode{}
 		}
 
-		log.Print(time.Now().UTC(), codeData.ExpiresAt, time.Now().UTC().Compare(codeData.ExpiresAt))
-
 		if codeData.ClientId != m.ClientId {
 			return nil, &utils.ClientIdMismatchError{}
 		} else if codeData.RedirectUri != m.RedirectUri {
@@ -185,7 +184,7 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 		}
 
 		// NOTE: Generate access and refresh token (optionally) and ID token (if OIDC)
-		expiresAt := time.Now().Add(time.Hour) // 1 hour
+		expiresAt := time.Now().UTC().Add(10 * time.Minute) // 10 minutes
 		tokenClaims := jwt.MapClaims{
 			"sub":   codeData.UserId,
 			"aud":   m.ClientId,
@@ -200,6 +199,17 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 			return nil, err
 		}
 
+		// NOTE: Save access token
+		if err := database.InsertAccessToken(as.DBConn, &models.AccessTokenModel{
+			TokenHash: utils.HashToken256(accessToken),
+			ClientId:  m.ClientId,
+			UserId:    codeData.UserId,
+			Scopes:    codeData.Scopes,
+			ExpiresAt: expiresAt,
+		}); err != nil {
+			return nil, err
+		}
+
 		randomBytes := make([]byte, 64)
 
 		if _, err := rand.Read(randomBytes); err != nil {
@@ -211,10 +221,11 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 
 		// NOTE: Save refresh token
 		if err := database.InsertRefreshToken(as.DBConn, &models.RefreshTokenModel{
-			Token:    refreshToken,
-			ClientId: m.ClientId,
-			UserId:   codeData.UserId,
-			Scopes:   codeData.Scopes,
+			TokenHash: utils.HashToken256(refreshToken),
+			ClientId:  m.ClientId,
+			UserId:    codeData.UserId,
+			Scopes:    codeData.Scopes,
+			ExpiresAt: time.Now().UTC().Add(30 * 24 * time.Hour),
 		}); err != nil {
 			return nil, err
 		}
@@ -228,13 +239,78 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 			return nil, &utils.AuthCodeUsedUpdateError{}
 		}
 
-		// NOTE: Save access and refresh token
-		if err := database.InsertAccessToken(as.DBConn, &models.AccessTokenModel{
-			Token:    refreshToken,
-			ClientId: m.ClientId,
-			UserId:   codeData.UserId,
-			Scopes:   codeData.Scopes,
+		return &models.TokenResponse{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+			TokenType:    "Bearer",
+			ExpiresIn:    int(time.Until(expiresAt).Seconds()),
+		}, nil
+
+	case "refresh_token":
+		tokenData, err := database.FindRefreshToken(as.DBConn, utils.HashToken256(m.RefreshToken))
+
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, &utils.RefreshTokenNotFoundError{
+					Status: http.StatusNotFound,
+					Msg:    "Refresh token not found",
+				}
+			}
+			return nil, err
+		}
+
+		if tokenData == nil {
+			return nil, &utils.RefreshTokenNotFoundError{
+				Status: http.StatusNotFound,
+				Msg:    "Refresh token not found",
+			}
+		}
+
+		if tokenData.ClientId != m.ClientId {
+			return nil, &utils.ClientIdMismatchError{}
+		}
+
+		if time.Now().UTC().Compare(tokenData.ExpiresAt) == 1 {
+			return nil, &utils.ExpiredRefreshTokenError{}
+		}
+
+		expiresAt := time.Now().Add(10 * time.Minute) // 10 minutes
+		tokenClaims := jwt.MapClaims{
+			"sub":   tokenData.UserId,
+			"aud":   tokenData.ClientId,
+			"exp":   expiresAt.Unix(),
+			"iat":   time.Now().Unix(),
+			"scope": tokenData.Scopes,
+		}
+
+		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims)
+		accessToken, err := jwtToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+		if err != nil {
+			return nil, err
+		}
+
+		if err := database.UpdateAccessToken(as.DBConn, &models.AccessTokenModel{
+			TokenHash: utils.HashToken256(accessToken),
+			ClientId:  tokenData.ClientId,
+			UserId:    tokenData.UserId,
+			Scopes:    tokenData.Scopes,
+			ExpiresAt: expiresAt,
 		}); err != nil {
+			return nil, err
+		}
+
+		// NOTE: Rotate refresh token and update it in DB
+		randomBytes := make([]byte, 64)
+
+		if _, err := rand.Read(randomBytes); err != nil {
+			log.Print("Error while reading random bytes for generating code!")
+			panic(err)
+		}
+
+		refreshToken := hex.EncodeToString(randomBytes)
+
+		err = database.UpdateRefreshTokenEntry(as.DBConn, utils.HashToken256(m.RefreshToken), utils.HashToken256(refreshToken))
+		if err != nil {
 			return nil, err
 		}
 
@@ -244,9 +320,38 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 			TokenType:    "Bearer",
 			ExpiresIn:    int(time.Until(expiresAt).Seconds()),
 		}, nil
+
+	default:
+		return nil, &utils.InvalidGrantType{}
+	}
+}
+
+// Idempotent call
+func (as *AuthorizationService) RevokeToken(m *models.RevokeTokenModel) error {
+
+	switch m.TokenTypeHint {
+	case "access_token":
+		tokenData, err := database.FindAccessToken(as.DBConn, utils.HashToken256(m.Token))
+
+		fmt.Print(tokenData)
+
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+
+		if tokenData == nil {
+			return nil
+		}
+
+		if !tokenData.Revoked {
+			database.RevokeAccessToken(as.DBConn, tokenData.TokenHash)
+		}
 	}
 
-	return nil, &utils.InvalidGrantType{}
+	return nil
 }
 
 func (as *AuthorizationService) Introspect() {

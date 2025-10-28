@@ -60,10 +60,11 @@ type TokenModelInput struct {
 	ClientSecretHash    string `json:"client_secret_hash"`
 	CodeVerifier        string `json:"code_verifier"`
 	CodeChallengeMethod string `json:"code_challenge_method"`
+	RefreshToken        string `json:"refresh_token"`
 }
 
 type AccessTokenModel struct {
-	Token     string
+	TokenHash string
 	UserId    string
 	ClientId  string
 	Scopes    string
@@ -72,8 +73,13 @@ type AccessTokenModel struct {
 	Revoked   bool
 }
 
+type RevokeTokenModel struct {
+	Token         string `json:"token"`
+	TokenTypeHint string `json:"token_type_hint"`
+}
+
 type RefreshTokenModel struct {
-	Token     string
+	TokenHash string
 	UserId    string
 	ClientId  string
 	Scopes    string

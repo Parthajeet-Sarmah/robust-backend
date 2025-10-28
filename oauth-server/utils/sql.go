@@ -133,7 +133,7 @@ func CreateAuthCodesTable(pg *custom_types.Postgres) error {
 
 func CreateAccessTokensTable(pg *custom_types.Postgres) error {
 	query := `CREATE TABLE IF NOT EXISTS access_tokens (
-		token TEXT,
+		token_hash TEXT,
 		user_id UUID,
 		client_id UUID,
 		scopes TEXT,
@@ -155,7 +155,7 @@ func CreateAccessTokensTable(pg *custom_types.Postgres) error {
 
 func CreateRefreshTokensTable(pg *custom_types.Postgres) error {
 	query := `CREATE TABLE IF NOT EXISTS refresh_tokens (
-		token TEXT,
+		token_hash TEXT,
 		user_id UUID,
 		client_id UUID,
 		scopes TEXT,
