@@ -142,6 +142,31 @@ func FindAccessToken(pg *custom_types.Postgres, accessTokenHash string) (*models
 
 }
 
+func IntrospectAccessToken(pg *custom_types.Postgres, accessTokenHash string) (*models.IntrospectAccessTokenModel, error) {
+
+	query := `SELECT client_id, scopes, revoked FROM access_tokens WHERE token_hash = @tokenHash LIMIT 1`
+	args := pgx.NamedArgs{
+		"tokenHash": accessTokenHash,
+	}
+
+	rows, err := pg.DB.Query(context.Background(), query, args)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.IntrospectAccessTokenModel])
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+
+}
+
 func FindRefreshToken(pg *custom_types.Postgres, refreshTokenHash string) (*models.RefreshTokenModel, error) {
 
 	query := `SELECT * FROM refresh_tokens WHERE token_hash = @tokenHash LIMIT 1`
@@ -158,6 +183,30 @@ func FindRefreshToken(pg *custom_types.Postgres, refreshTokenHash string) (*mode
 	defer rows.Close()
 
 	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.RefreshTokenModel])
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+}
+
+func IntrospectRefreshToken(pg *custom_types.Postgres, refreshTokenHash string) (*models.IntrospectRefreshTokenModel, error) {
+
+	query := `SELECT client_id, expires_at, created_at, revoked, scopes FROM refresh_tokens WHERE token_hash = @tokenHash LIMIT 1`
+	args := pgx.NamedArgs{
+		"tokenHash": refreshTokenHash,
+	}
+
+	rows, err := pg.DB.Query(context.Background(), query, args)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.IntrospectRefreshTokenModel])
 
 	if err != nil {
 		return nil, err

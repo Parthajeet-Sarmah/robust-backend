@@ -25,6 +25,9 @@ type AuthCodeUsedUpdateError struct{}
 type CodeChallengeDoesNotMatchError struct{}
 type UnknownError struct{}
 type InvalidGrantType struct{}
+type TokenParsingError struct{}
+type NoAccessTokenFoundError struct{}
+
 type RefreshTokenNotFoundError struct {
 	Status int
 	Msg    string
@@ -69,6 +72,14 @@ func (e *CouldNotFetchAuthCode) Error() string {
 
 func (e *InvalidGrantType) Error() string {
 	return "The grant type provided is not valid!"
+}
+
+func (e *TokenParsingError) Error() string {
+	return "The token could not be parsed!"
+}
+
+func (e *NoAccessTokenFoundError) Error() string {
+	return "The token could not be parsed!"
 }
 
 func (e *RefreshTokenNotFoundError) Error() string {

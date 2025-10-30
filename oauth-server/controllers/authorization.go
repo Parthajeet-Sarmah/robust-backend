@@ -143,16 +143,16 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 
 func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, r *http.Request) {
 
-	m := &models.TokenModelInput{}
-	if err := utils.DecodeJSONBody(w, r, &m); err != nil {
-		if _, ok := err.(*utils.MalformedRequest); ok {
-			_err := err.(*utils.MalformedRequest)
-			http.Error(w, _err.Msg, _err.Status)
-			return
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	// TODO: Enforce proper Content-Type headers
+	m := &models.TokenModelInput{
+		GrantType:           r.FormValue("grant_type"),
+		Code:                r.FormValue("code"),
+		RedirectUri:         r.FormValue("redirect_uri"),
+		ClientId:            r.FormValue("client_id"),
+		ClientSecretHash:    r.FormValue("client_secret_hash"),
+		CodeVerifier:        r.FormValue("code_verifier"),
+		CodeChallengeMethod: r.FormValue("code_challenge_method"),
+		RefreshToken:        r.FormValue("refresh_token"),
 	}
 
 	token, err := services.AuthorizationService.GenerateToken(m)
@@ -179,17 +179,9 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 
 func (controller *AuthorizationController) RevokeToken(w http.ResponseWriter, r *http.Request) {
 
-	m := &models.RevokeTokenModel{}
-
-	if err := utils.DecodeJSONBody(w, r, &m); err != nil {
-		if _, ok := err.(*utils.MalformedRequest); ok {
-			_err := err.(*utils.MalformedRequest)
-			http.Error(w, _err.Msg, _err.Status)
-			return
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	m := &models.RevokeTokenModel{
+		Token:         r.FormValue("token"),
+		TokenTypeHint: r.FormValue("token_type_hint"),
 	}
 
 	if err := services.AuthorizationService.RevokeToken(m); err != nil {
@@ -198,8 +190,4 @@ func (controller *AuthorizationController) RevokeToken(w http.ResponseWriter, r 
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func (controller *AuthorizationController) Introspect() {
-
 }

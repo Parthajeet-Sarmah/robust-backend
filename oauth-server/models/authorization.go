@@ -1,6 +1,19 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+type CustomClaims struct {
+	Issuer    string `json:"iss"`
+	Subject   string `json:"sub"`
+	ExpiresAt int64  `json:"exp"`
+	NotBefore int64  `json:"nbf"`
+	IssuedAt  int64  `json:"iat"`
+	jwt.RegisteredClaims
+}
 
 type AuthorizationRequestModelInput struct {
 	ResponseType        string
@@ -73,6 +86,12 @@ type AccessTokenModel struct {
 	Revoked   bool
 }
 
+type IntrospectAccessTokenModel struct {
+	ClientId string
+	Scopes   string
+	Revoked  bool
+}
+
 type RevokeTokenModel struct {
 	Token         string `json:"token"`
 	TokenTypeHint string `json:"token_type_hint"`
@@ -86,4 +105,17 @@ type RefreshTokenModel struct {
 	ExpiresAt time.Time
 	CreatedAt time.Time
 	Revoked   bool
+}
+
+type IntrospectRefreshTokenModel struct {
+	ClientId  string
+	Scopes    string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+	Revoked   bool
+}
+
+type InstrospectModelInput struct {
+	Token         string
+	TokenTypeHint string
 }

@@ -34,15 +34,14 @@ func main() {
 
 	//Sub routes
 	authorizationRouter := routers.AuthorizationHandler().RegisterRoutes()
-	userRouter := routers.UserHandler().RegisterRoutes()
 	clientRouter := routers.ClientHandler().RegisterRoutes()
+	introspectRouter := routers.IntrospectHandler().RegisterRoutes()
 
 	router := http.NewServeMux()
 
 	router.Handle("/authorize/", http.StripPrefix("/authorize", authorizationRouter))
-	router.Handle("/users/", http.StripPrefix("/users", userRouter))
 	router.Handle("/clients/", http.StripPrefix("/clients", clientRouter))
-	//router.Handle("/introspect/", http.StripPrefix("/introspect", introspectRouter))
+	router.Handle("/introspect/", http.StripPrefix("/introspect", introspectRouter))
 
 	log.Println("Starting server on port 9000")
 	http.ListenAndServe(":9000", router)

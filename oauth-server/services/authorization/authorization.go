@@ -186,7 +186,7 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 		// NOTE: Generate access and refresh token (optionally) and ID token (if OIDC)
 		expiresAt := time.Now().UTC().Add(10 * time.Minute) // 10 minutes
 		tokenClaims := jwt.MapClaims{
-			"sub":   codeData.UserId,
+			"sub":   utils.HashToken256(codeData.UserId),
 			"aud":   m.ClientId,
 			"exp":   expiresAt.Unix(),
 			"iat":   time.Now().Unix(),
@@ -276,7 +276,7 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 
 		expiresAt := time.Now().Add(10 * time.Minute) // 10 minutes
 		tokenClaims := jwt.MapClaims{
-			"sub":   tokenData.UserId,
+			"sub":   utils.HashToken256(tokenData.UserId),
 			"aud":   tokenData.ClientId,
 			"exp":   expiresAt.Unix(),
 			"iat":   time.Now().Unix(),
@@ -333,8 +333,6 @@ func (as *AuthorizationService) RevokeToken(m *models.RevokeTokenModel) error {
 	case "access_token":
 		tokenData, err := database.FindAccessToken(as.DBConn, utils.HashToken256(m.Token))
 
-		fmt.Print(tokenData)
-
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil
@@ -352,8 +350,4 @@ func (as *AuthorizationService) RevokeToken(m *models.RevokeTokenModel) error {
 	}
 
 	return nil
-}
-
-func (as *AuthorizationService) Introspect() {
-
 }
