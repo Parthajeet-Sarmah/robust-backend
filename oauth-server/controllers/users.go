@@ -19,7 +19,7 @@ func (userController UserController) Login(w http.ResponseWriter, r *http.Reques
 		log.Fatal(err)
 	}
 
-	tmpl := template.Must(template.ParseFiles(wd + "/templates/new_login.html"))
+	tmpl := template.Must(template.ParseFiles(wd + "/templates/login.html"))
 
 	if r.Method != http.MethodPost {
 		tmpl.Execute(w, nil)

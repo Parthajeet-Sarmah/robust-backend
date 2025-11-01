@@ -32,7 +32,7 @@ func FindClientById(pg *custom_types.Postgres, ctx context.Context, client_id st
 	return &data, nil
 }
 
-func InsertClient(pg *custom_types.Postgres, ctx context.Context, m *models.ClientDatabaseModelInput) error {
+func InsertClient(pg *custom_types.Postgres, ctx context.Context, m *custom_types.ClientDatabaseModelInput) error {
 	query := `INSERT INTO clients (
 		client_secret_hash,
 		redirect_uri,

@@ -11,6 +11,7 @@ import (
 
 	"local/bomboclat-oauth-server/models"
 	"local/bomboclat-oauth-server/services"
+	custom_types "local/bomboclat-oauth-server/types"
 	utils "local/bomboclat-oauth-server/utils"
 )
 
@@ -32,7 +33,7 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 		code_challenge_method = "plain"
 	}
 
-	authRequestModelInput := models.AuthorizationRequestModelInput{
+	authRequestModelInput := custom_types.AuthorizationRequestModelInput{
 		ClientId:            client_id,
 		RedirectUri:         redirect_uri,
 		ResponseType:        response_type,
@@ -49,9 +50,11 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 	if _, ok := err.(*utils.UserNotLoggedInError); ok {
 		// NOTE: Redirect to /login route
 		log.Println("User is not logged in")
+
+		loginBaseUrl := os.Getenv("OIDC_BASE_URL")
 		loginUrl := "/users/login?next=" + "/authorize" + url.QueryEscape(r.URL.String())
 
-		http.Redirect(w, r, loginUrl, http.StatusFound)
+		http.Redirect(w, r, loginBaseUrl+loginUrl, http.StatusFound)
 		return
 	}
 
@@ -108,7 +111,7 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 		decision := r.FormValue("decision")
 		redirect_uri := r.FormValue("redirect_uri")
 
-		authConsentModelInput := models.AuthorizationConsentModelInput{
+		authConsentModelInput := custom_types.AuthorizationConsentModelInput{
 			ClientId:    client_id,
 			Scope:       scope,
 			Decision:    decision,
@@ -144,7 +147,7 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Enforce proper Content-Type headers
-	m := &models.TokenModelInput{
+	m := &custom_types.TokenModelInput{
 		GrantType:           r.FormValue("grant_type"),
 		Code:                r.FormValue("code"),
 		RedirectUri:         r.FormValue("redirect_uri"),

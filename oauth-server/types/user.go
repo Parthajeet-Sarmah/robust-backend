@@ -10,3 +10,9 @@ type UserDetails struct {
 type Postgres struct {
 	DB *pgxpool.Pool
 }
+
+type UserDatabaseModelInput struct {
+	Username     string
+	Email        string
+	PasswordHash string
+}

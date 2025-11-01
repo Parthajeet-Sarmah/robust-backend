@@ -274,7 +274,7 @@ func GetAuthCode(pg *custom_types.Postgres, code string) (*models.AuthCodeModel,
 	return &data, nil
 }
 
-func CreateAuthCodeEntry(pg *custom_types.Postgres, m *models.AuthCodeModelInput) error {
+func CreateAuthCodeEntry(pg *custom_types.Postgres, m *custom_types.AuthCodeModelInput) error {
 
 	query := `INSERT INTO auth_codes (code, user_id, client_id, redirect_uri, scopes, code_challenge,
 	code_challenge_method, used) VALUES (

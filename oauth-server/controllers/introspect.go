@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"local/bomboclat-oauth-server/models"
 	"local/bomboclat-oauth-server/services"
+	custom_types "local/bomboclat-oauth-server/types"
 )
 
 type IntrospectController struct{}
 
 func (controller *IntrospectController) Introspect(w http.ResponseWriter, r *http.Request) {
 
-	m := &models.InstrospectModelInput{
+	m := &custom_types.InstrospectModelInput{
 		Token:         r.FormValue("token"),
 		TokenTypeHint: r.FormValue("token_type_hint"),
 	}

@@ -66,25 +66,6 @@ func CreateClientsTable(pg *custom_types.Postgres) error {
 }
 
 // Part of OIDC, not OAuth
-func CreateUsersTable(pg *custom_types.Postgres) error {
-	query := `CREATE TABLE IF NOT EXISTS users (
-		id SERIAL PRIMARY KEY,
-		username TEXT,
-		email TEXT,
-		password_hash TEXT,
-		uuid UUID UNIQUE DEFAULT gen_random_uuid(),
-		created_at TIMESTAMP DEFAULT now(),
-		updated_at TIMESTAMP DEFAULT now()
-	)`
-
-	_, err := pg.DB.Exec(context.Background(), query)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 //code	VARCHAR(255)	Random unique auth code
 //user_id	FK → users.id	Who authorized
@@ -110,8 +91,7 @@ func CreateAuthCodesTable(pg *custom_types.Postgres) error {
 		code_challenge_method VARCHAR(10),
 		used BOOLEAN,
 		created_at TIMESTAMP DEFAULT now(),
-		FOREIGN KEY (client_id) REFERENCES clients(client_id),
-		FOREIGN KEY (user_id) REFERENCES users(uuid)
+		FOREIGN KEY (client_id) REFERENCES clients(client_id)
 	)`
 
 	_, err := pg.DB.Exec(context.Background(), query)
@@ -140,7 +120,6 @@ func CreateAccessTokensTable(pg *custom_types.Postgres) error {
 		expires_at TIMESTAMP,
 		created_at TIMESTAMP DEFAULT now(),
 		revoked BOOLEAN DEFAULT false,
-		FOREIGN KEY (user_id) REFERENCES users(uuid),
 		FOREIGN KEY (client_id) REFERENCES clients(client_id)
 	)`
 
@@ -162,7 +141,6 @@ func CreateRefreshTokensTable(pg *custom_types.Postgres) error {
 		expires_at TIMESTAMP,
 		created_at TIMESTAMP DEFAULT now(),
 		revoked BOOLEAN DEFAULT false,
-		FOREIGN KEY (user_id) REFERENCES users(uuid),
 		FOREIGN KEY (client_id) REFERENCES clients(client_id)
 	)`
 
@@ -178,12 +156,11 @@ func CreateRefreshTokensTable(pg *custom_types.Postgres) error {
 func CreateConsentsTable(pg *custom_types.Postgres) error {
 	query := `CREATE TABLE IF NOT EXISTS consents (
 		id SERIAL PRIMARY KEY,
-		user_id INTEGER,
+		user_id UUID,
 		client_id UUID,
 		scopes TEXT,
 		updated_at TIMESTAMP DEFAULT now(),
 		created_at TIMESTAMP DEFAULT now(),
-		FOREIGN KEY (user_id) REFERENCES users(id),
 		FOREIGN KEY (client_id) REFERENCES clients(client_id)
 	)`
 

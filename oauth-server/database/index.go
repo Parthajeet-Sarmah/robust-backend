@@ -13,7 +13,6 @@ func CreateDatabaseTables(dbPool *custom_types.Postgres) {
 		fn   func(*custom_types.Postgres) error
 	}{
 		{"clients", utils.CreateClientsTable},
-		{"users", utils.CreateUsersTable},
 		{"consents", utils.CreateConsentsTable},
 		{"auth_codes", utils.CreateAuthCodesTable},
 		{"access_tokens", utils.CreateAccessTokensTable},

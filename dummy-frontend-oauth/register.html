@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Bomboclat App</title>
+  <title>Register - Bomboclat App</title>
 
   <!-- Import Inter Font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -68,7 +68,7 @@
       border-radius: 12px;
       padding: 2.5rem 2rem;
       width: 100%;
-      max-width: 360px;
+      max-width: 380px;
       text-align: center;
       box-shadow: 0 0 0 1px #222, 0 4px 24px rgba(0, 0, 0, 0.5);
       animation: fadeIn 0.6s ease-out;
@@ -183,11 +183,12 @@
 <body>
   <div class="glow"></div>
   <div class="card">
-    {{ if .Success }}
-    <h1 class="success">Thanks for logging in</h1>
-    {{ else }}
-    <h1>Login to Bomboclat App</h1>
-    <form method="POST">
+    <h1>Create Your Bomboclat Account</h1>
+    <form method="POST" action="http://localhost:9030/users/register">
+      <div>
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" placeholder="cooluser123" required />
+      </div>
       <div>
         <label for="email">Email</label>
         <input id="email" name="email" type="email" placeholder="you@example.com" required />
@@ -196,9 +197,12 @@
         <label for="password">Password</label>
         <input id="password" name="password" type="password" placeholder="••••••••" required />
       </div>
-      <button type="submit">Login</button>
+      <div>
+        <label for="profilePic">Profile Picture URL</label>
+        <input id="profilePic" name="profilePic" type="url" placeholder="https://example.com/avatar.jpg" required />
+      </div>
+      <button type="submit">Register</button>
     </form>
-    {{ end }}
   </div>
 </body>
 

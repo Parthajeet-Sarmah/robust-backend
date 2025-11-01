@@ -2,12 +2,6 @@ package models
 
 import "time"
 
-type UserDatabaseModelInput struct {
-	Username     string
-	Email        string
-	PasswordHash string
-}
-
 //	query := `CREATE TABLE IF NOT EXISTS users (
 //		id SERIAL PRIMARY KEY,
 //		username TEXT,

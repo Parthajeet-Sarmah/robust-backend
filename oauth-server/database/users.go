@@ -29,7 +29,7 @@ func FindUserByEmailAndPasswordHash(pg *custom_types.Postgres, ctx context.Conte
 	return &data, nil
 }
 
-func InsertUser(pg *custom_types.Postgres, ctx context.Context, m *models.UserDatabaseModelInput) error {
+func InsertUser(pg *custom_types.Postgres, ctx context.Context, m *custom_types.UserDatabaseModelInput) error {
 	query := `INSERT INTO users (
 		username,
 		email,

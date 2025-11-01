@@ -15,6 +15,7 @@ import (
 
 	"local/bomboclat-oauth-server/database"
 	"local/bomboclat-oauth-server/models"
+	custom_types "local/bomboclat-oauth-server/types"
 	utils "local/bomboclat-oauth-server/utils"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -22,7 +23,7 @@ import (
 )
 
 func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
-	m models.AuthorizationRequestModelInput,
+	m custom_types.AuthorizationRequestModelInput,
 	userCookie *http.Cookie,
 ) (*string, error) {
 
@@ -80,7 +81,7 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 
 	authCode := hex.EncodeToString(randomBytes)
 
-	authCodeData := models.AuthCodeModelInput{
+	authCodeData := custom_types.AuthCodeModelInput{
 		Code:                authCode,
 		UserId:              res["user_id"],
 		ClientId:            *client.ClientId,
@@ -99,7 +100,7 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 	return &url, nil
 }
 
-func (as *AuthorizationService) AuthorizeConsent(m models.AuthorizationConsentModelInput, userCookie *http.Cookie) error {
+func (as *AuthorizationService) AuthorizeConsent(m custom_types.AuthorizationConsentModelInput, userCookie *http.Cookie) error {
 
 	if m.Decision == "deny" {
 		log.Print("Denied permission of data")
@@ -129,7 +130,7 @@ func (as *AuthorizationService) AuthorizeConsent(m models.AuthorizationConsentMo
 	return errors.New("Wrong method")
 }
 
-func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*models.TokenResponse, error) {
+func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (*custom_types.TokenResponse, error) {
 
 	switch m.GrantType {
 	case "authorization_code":
@@ -186,15 +187,22 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 		// NOTE: Generate access and refresh token (optionally) and ID token (if OIDC)
 		expiresAt := time.Now().UTC().Add(10 * time.Minute) // 10 minutes
 		tokenClaims := jwt.MapClaims{
-			"sub":   utils.HashToken256(codeData.UserId),
+			"sub":   codeData.UserId,
 			"aud":   m.ClientId,
 			"exp":   expiresAt.Unix(),
 			"iat":   time.Now().Unix(),
 			"scope": codeData.Scopes,
+			"iss":   os.Getenv("OIDC_BASE_URL"),
 		}
 
-		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims)
-		accessToken, err := jwtToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+		// NOTE: Get RSA private key
+		key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(os.Getenv("JWT_RSA_PRIVATE_KEY")))
+		if err != nil {
+			return nil, err
+		}
+
+		jwtToken := jwt.NewWithClaims(jwt.SigningMethodRS256, tokenClaims)
+		accessToken, err := jwtToken.SignedString(key)
 		if err != nil {
 			return nil, err
 		}
@@ -239,7 +247,7 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 			return nil, &utils.AuthCodeUsedUpdateError{}
 		}
 
-		return &models.TokenResponse{
+		return &custom_types.TokenResponse{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 			TokenType:    "Bearer",
@@ -283,8 +291,13 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 			"scope": tokenData.Scopes,
 		}
 
-		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims)
-		accessToken, err := jwtToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+		key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(os.Getenv("JWT_RSA_PRIVATE_KEY")))
+		if err != nil {
+			return nil, err
+		}
+
+		jwtToken := jwt.NewWithClaims(jwt.SigningMethodRS256, tokenClaims)
+		accessToken, err := jwtToken.SignedString(key)
 		if err != nil {
 			return nil, err
 		}
@@ -314,7 +327,7 @@ func (as *AuthorizationService) GenerateToken(m *models.TokenModelInput) (*model
 			return nil, err
 		}
 
-		return &models.TokenResponse{
+		return &custom_types.TokenResponse{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 			TokenType:    "Bearer",

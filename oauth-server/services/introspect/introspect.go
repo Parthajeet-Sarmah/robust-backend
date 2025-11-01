@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"local/bomboclat-oauth-server/database"
-	"local/bomboclat-oauth-server/models"
+	custom_types "local/bomboclat-oauth-server/types"
 	utils "local/bomboclat-oauth-server/utils"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func (as *IntrospectService) Introspect(m *models.InstrospectModelInput) (*map[string]any, error) {
+func (as *IntrospectService) Introspect(m *custom_types.InstrospectModelInput) (*map[string]any, error) {
 
 	switch m.TokenTypeHint {
 	case "access_token":
@@ -27,15 +27,21 @@ func (as *IntrospectService) Introspect(m *models.InstrospectModelInput) (*map[s
 			return nil, &utils.NoAccessTokenFoundError{}
 		}
 
-		token, err := jwt.ParseWithClaims(m.Token, &models.CustomClaims{}, func(token *jwt.Token) (any, error) {
-			return []byte(os.Getenv("JWT_SECRET")), nil
+		// NOTE: Get RSA public key
+		key, err := jwt.ParseRSAPublicKeyFromPEM([]byte(os.Getenv("JWT_RSA_PUBLIC_KEY")))
+		if err != nil {
+			return nil, err
+		}
+
+		token, err := jwt.ParseWithClaims(m.Token, &custom_types.CustomClaims{}, func(token *jwt.Token) (any, error) {
+			return key, nil
 		})
 
 		if err != nil {
 			return nil, &utils.TokenParsingError{}
 		}
 
-		if claims, ok := token.Claims.(*models.CustomClaims); ok && token.Valid {
+		if claims, ok := token.Claims.(*custom_types.CustomClaims); ok && token.Valid {
 
 			isTokenActive := !tokenData.Revoked && claims.ExpiresAt > time.Now().UTC().Unix()
 

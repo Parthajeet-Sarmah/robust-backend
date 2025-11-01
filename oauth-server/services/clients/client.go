@@ -3,19 +3,10 @@ package clients
 import (
 	"context"
 	"local/bomboclat-oauth-server/database"
-	"local/bomboclat-oauth-server/models"
+	custom_types "local/bomboclat-oauth-server/types"
 )
 
-//type ClientDatabaseModelInput struct {
-//	ClientSecretHash string
-//	RedirectUri      string
-//	AppName          string
-//	GrantTypes       []string
-//	LogoUrl          string
-//	JwksUri          string
-//	IsConfidential   bool
-
-func (cs *ClientService) Register(m *models.ClientDatabaseModelInput) error {
+func (cs *ClientService) Register(m *custom_types.ClientDatabaseModelInput) error {
 
 	if err := database.InsertClient(cs.DBConn, context.Background(), m); err != nil {
 		return err
