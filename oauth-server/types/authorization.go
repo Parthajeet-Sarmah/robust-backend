@@ -2,6 +2,32 @@ package custom_types
 
 import "github.com/golang-jwt/jwt/v5"
 
+type JWK struct {
+	Kty string `json:"kty"`
+	Use string `json:"use"`
+	Alg string `json:"alg"`
+	Kid string `json:"kid"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+}
+
+type OpenIdConfiguration struct {
+	Issuer                            string   `json:"issuer"`
+	AuthorizationEndpoint             string   `json:"authorization_endpoint"`
+	TokenEndpoint                     string   `json:"token_endpoint"`
+	UserInfoEndpoint                  string   `json:"userinfo_endpoint"`
+	JwksUri                           string   `json:"jwks_uri"`
+	RegistrationEndpoint              string   `json:"registration_endpoint"`
+	RevocationEndpoint                string   `json:"revocation_endpoint"`
+	IntrospectionEndpoint             string   `json:"introspection_endpoint"`
+	ScopesSupported                   []string `json:"scopes_supported"`
+	ResponseTypesSupported            []string `json:"response_types_supported"`
+	GrantTypesSupported               []string `json:"grant_types_supported"`
+	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
+	SubjectTypesSupported             []string `json:"subject_types_supported"`
+	IdTokenSigningAlgValuesSupported  []string `json:"id_token_signing_alg_values_supported"`
+}
+
 type TokenModelInput struct {
 	GrantType           string `json:"grant_type"`
 	Code                string `json:"code"`
