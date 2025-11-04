@@ -5,6 +5,7 @@ type UserScopeDeniedError struct{}
 
 type CouldNotConnectToDatabaseError struct{}
 type CouldNotFetchAuthCode struct{}
+type CouldNotFetchUserData struct{}
 
 type RedisCouldNotCreateClient struct{}
 type RedisGetHashError struct{}
@@ -68,6 +69,10 @@ func (e *AuthCodeUsedUpdateError) Error() string {
 
 func (e *CouldNotFetchAuthCode) Error() string {
 	return "The authorization code could not be fetched!"
+}
+
+func (e *CouldNotFetchUserData) Error() string {
+	return "The user data could not be fetched!"
 }
 
 func (e *InvalidGrantType) Error() string {

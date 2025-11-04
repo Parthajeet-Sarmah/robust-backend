@@ -17,6 +17,24 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+func (us *UserService) GetUserById(userId string) (*custom_types.UserProfile, error) {
+
+	data, err := database.FindUserByUUID(us.DBConn, context.Background(), userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	profile := custom_types.UserProfile{
+		Email:        data.Email,
+		UserUUID:     data.UUID,
+		Username:     data.Username,
+		PasswordHash: data.PasswordHash,
+	}
+
+	return &profile, nil
+}
+
 func (us *UserService) Login(userDetails custom_types.UserLoginDetails) (*http.Cookie, error) {
 
 	data, err := database.FindUserByEmailAndPasswordHash(us.DBConn, context.Background(),

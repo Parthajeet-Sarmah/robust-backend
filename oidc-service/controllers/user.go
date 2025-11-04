@@ -15,6 +15,23 @@ import (
 
 type UserController struct{}
 
+func (userController UserController) GetUserById(w http.ResponseWriter, r *http.Request) {
+
+	user_id := r.PathValue("id")
+
+	data, err := services.UserService.GetUserById(user_id)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (userController UserController) Login(w http.ResponseWriter, r *http.Request) {
 
 	wd, err := os.Getwd()

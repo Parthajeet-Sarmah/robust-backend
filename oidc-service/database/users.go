@@ -11,7 +11,7 @@ import (
 
 func FindUserByUUID(pg *custom_types.Postgres, ctx context.Context, uuid string) (*models.UserDatabaseModel, error) {
 
-	query := `SELECT username, email FROM users WHERE uuid = @uuid LIMIT 1`
+	query := `SELECT uuid, username, email FROM users WHERE uuid = @uuid LIMIT 1`
 	args := pgx.NamedArgs{"uuid": uuid}
 	rows, err := pg.DB.Query(ctx, query, args)
 

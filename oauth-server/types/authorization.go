@@ -43,6 +43,7 @@ type TokenResponse struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 	TokenType    string `json:"tokenType"`
+	IdToken      string `json:"idToken,omitempty"`
 	ExpiresIn    int    `json:"expiresIn"`
 }
 

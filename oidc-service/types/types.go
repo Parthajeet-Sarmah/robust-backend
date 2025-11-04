@@ -29,11 +29,12 @@ type UserRegistrationDetails struct {
 }
 
 type UserProfile struct {
-	Email           string
-	Name            string
-	PasswordHash    string
-	IsEmailVerified bool
-	ProfilePic      string
+	UserUUID        string `json:"id"`
+	Email           string `json:"email"`
+	Username        string `json:"username"`
+	PasswordHash    string `json:"password_hash,omitempty"`
+	IsEmailVerified bool   `json:"email_verified,omitempty"`
+	ProfilePic      string `json:"profile_pic,omitempty"`
 }
 
 type UserInfo struct {

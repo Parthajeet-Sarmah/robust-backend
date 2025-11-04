@@ -6,11 +6,14 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"local/bomboclat-oauth-server/database"
@@ -159,7 +162,7 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 
 		if err != nil {
 			log.Print(err)
-			return nil, &utils.CouldNotFetchAuthCode{}
+			return nil, err
 		}
 
 		if codeData.ClientId != m.ClientId {
@@ -184,8 +187,73 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 			return nil, &utils.CodeChallengeDoesNotMatchError{}
 		}
 
-		// NOTE: Generate access and refresh token (optionally) and ID token (if OIDC)
+		var idToken string
+		// NOTE: Checking for OpenID scope and generate ID token if exists
+		if strings.Contains(codeData.Scopes, "openid") {
+
+			var user custom_types.UserProfile
+			// Call OIDC service to fetch user data
+			oidcBaseUrl := os.Getenv("OIDC_BASE_URL")
+			client := &http.Client{}
+
+			// TODO: Add a internal service token
+			req, err := http.NewRequest("GET", oidcBaseUrl+"users/id/"+codeData.UserId, nil)
+			//req.Header.Set("Authorization", "Bearer internal")
+
+			if err != nil {
+				return nil, err
+			}
+
+			resp, err := client.Do(req)
+
+			if err != nil {
+				return nil, err
+			}
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+
+			err = json.Unmarshal(body, &user)
+
+			if err != nil {
+				return nil, err
+			}
+
+			expiresAt := time.Now().UTC().Add(10 * time.Minute) // 10 minutes
+
+			// NOTE: Create ID token if user is not null
+			var pidTokenClaims jwt.MapClaims
+
+			pidTokenClaims = jwt.MapClaims{
+				"iss":   os.Getenv("OIDC_BASE_URL"),
+				"sub":   user.UserUUID,
+				"aud":   m.ClientId,
+				"exp":   expiresAt.Unix(),
+				"iat":   time.Now().Unix(),
+				"email": user.Email,
+				"name":  user.Username,
+			}
+
+			key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(os.Getenv("JWT_RSA_PRIVATE_KEY")))
+			if err != nil {
+				return nil, err
+			}
+
+			jwtToken := jwt.NewWithClaims(jwt.SigningMethodRS256, pidTokenClaims)
+			tokenString, err := jwtToken.SignedString(key)
+			if err != nil {
+				return nil, err
+			}
+
+			idToken = tokenString
+
+		}
+
 		expiresAt := time.Now().UTC().Add(10 * time.Minute) // 10 minutes
+
+		// NOTE: Generate access and refresh token (optionally) and ID token (if OIDC)
 		tokenClaims := jwt.MapClaims{
 			"sub":   codeData.UserId,
 			"aud":   m.ClientId,
@@ -250,6 +318,7 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 		return &custom_types.TokenResponse{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
+			IdToken:      idToken,
 			TokenType:    "Bearer",
 			ExpiresIn:    int(time.Until(expiresAt).Seconds()),
 		}, nil

@@ -17,6 +17,7 @@ func (h *UserRouterHandler) RegisterRoutes() *http.ServeMux {
 	controller := controller.UserController{}
 
 	//r.HandleFunc("POST /register", controller.Register)
+	r.HandleFunc("GET /id/{id}", controller.GetUserById)
 	r.HandleFunc("/login", controller.Login)
 	r.HandleFunc("GET /userinfo", controller.UserInfo)
 	r.HandleFunc("POST /register", controller.Register)
