@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"local/bomboclat-oidc-service/database"
 	custom_types "local/bomboclat-oidc-service/types"
@@ -17,9 +18,20 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func (us *UserService) GetUserById(userId string) (*custom_types.UserProfile, error) {
+func (us *UserService) GetUserById(userId string, requiredFields string) (*custom_types.UserProfile, error) {
 
-	data, err := database.FindUserByUUID(us.DBConn, context.Background(), userId)
+	var fields []string
+
+	if strings.Contains(requiredFields, "profile") {
+		fields = append(fields, "username")
+	}
+	if strings.Contains(requiredFields, "email") {
+		fields = append(fields, "email")
+	}
+
+	fieldString := strings.Join(fields, ", ")
+
+	data, err := database.FindUserByUUID(us.DBConn, context.Background(), userId, fieldString)
 
 	if err != nil {
 		return nil, err
@@ -115,7 +127,7 @@ func (us *UserService) UserInfo(authToken string) (*custom_types.UserInfo, error
 
 		userUUID := claims.Subject
 
-		user, err := database.FindUserByUUID(us.DBConn, context.Background(), userUUID)
+		user, err := database.FindUserByUUID(us.DBConn, context.Background(), userUUID, "")
 
 		userInfo := &custom_types.UserInfo{
 			Username: user.Username,

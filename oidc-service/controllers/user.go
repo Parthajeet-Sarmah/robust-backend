@@ -18,8 +18,9 @@ type UserController struct{}
 func (userController UserController) GetUserById(w http.ResponseWriter, r *http.Request) {
 
 	user_id := r.PathValue("id")
+	fields := r.URL.Query().Get("fields")
 
-	data, err := services.UserService.GetUserById(user_id)
+	data, err := services.UserService.GetUserById(user_id, fields)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

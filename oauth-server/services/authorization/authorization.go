@@ -197,7 +197,18 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 			client := &http.Client{}
 
 			// TODO: Add a internal service token
-			req, err := http.NewRequest("GET", oidcBaseUrl+"users/id/"+codeData.UserId, nil)
+			fields := strings.Split(codeData.Scopes, " ")
+			var fieldsFiltered []string
+
+			for _, val := range fields {
+				if !strings.Contains(val, "openid") {
+					fieldsFiltered = append(fieldsFiltered, val)
+				}
+			}
+
+			fieldString := "?fields=" + strings.Join(fieldsFiltered, ",")
+
+			req, err := http.NewRequest("GET", oidcBaseUrl+"users/id/"+codeData.UserId+fieldString, nil)
 			//req.Header.Set("Authorization", "Bearer internal")
 
 			if err != nil {

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"local/bomboclat-oidc-service/models"
 	custom_types "local/bomboclat-oidc-service/types"
 	"local/bomboclat-oidc-service/utils"
@@ -9,9 +10,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func FindUserByUUID(pg *custom_types.Postgres, ctx context.Context, uuid string) (*models.UserDatabaseModel, error) {
+func FindUserByUUID(pg *custom_types.Postgres, ctx context.Context, uuid string, fields string) (*models.UserDatabaseModel, error) {
 
-	query := `SELECT uuid, username, email FROM users WHERE uuid = @uuid LIMIT 1`
+	if fields == "" {
+		fields = "username, email"
+	}
+
+	query := fmt.Sprintf(`SELECT %s FROM users WHERE uuid = @uuid LIMIT 1`, fields)
 	args := pgx.NamedArgs{"uuid": uuid}
 	rows, err := pg.DB.Query(ctx, query, args)
 
