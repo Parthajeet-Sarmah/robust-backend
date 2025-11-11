@@ -2,7 +2,8 @@ package utils
 
 import (
 	"context"
-	"log"
+	"fmt"
+	custom_errors "local/bomboclat-oauth-server/errors"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -16,7 +17,7 @@ func CreateRedisClient() (*redis.Client, error) {
 	})
 
 	if client == nil {
-		return nil, &RedisCouldNotCreateClient{}
+		return nil, custom_errors.RedisCouldNotCreateClientError(nil)
 	}
 
 	return client, nil
@@ -28,13 +29,11 @@ func GetValueFromHash(c *redis.Client, hash string) (map[string]string, error) {
 	res, err := c.HGetAll(ctx, hash).Result()
 
 	if err != nil {
-		log.Print("Error while getting hash resource from Redis!")
-		return nil, &RedisGetHashError{}
+		return nil, custom_errors.RedisGetHashError(err)
 	}
 
 	if res == nil {
-		log.Print("No resource found for the given hash!")
-		return nil, &RedisGetHashNoResourceFoundError{}
+		return nil, custom_errors.RedisGetHashNoResourceFoundError(fmt.Errorf("No resource found for the given hash: %s", hash))
 	}
 
 	return res, nil
@@ -46,8 +45,7 @@ func SetValueToHash(c *redis.Client, hash string, resource map[string]string) er
 	_, err := c.HSet(ctx, hash, resource).Result()
 
 	if err != nil {
-		log.Print("Error while setting hash resource to Redis!")
-		return &RedisSetHasError{}
+		return custom_errors.RedisSetHasError(fmt.Errorf("Error while setting for hash %s : %s", hash, err.Error()))
 	}
 
 	return nil

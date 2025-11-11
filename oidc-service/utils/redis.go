@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	custom_errors "local/bomboclat-oidc-service/errors"
 	"log"
 
 	"github.com/redis/go-redis/v9"
@@ -16,7 +17,7 @@ func CreateRedisClient() (*redis.Client, error) {
 	})
 
 	if client == nil {
-		return nil, &RedisCouldNotCreateClient{}
+		return nil, custom_errors.RedisCouldNotCreateClientError(nil)
 	}
 
 	return client, nil
@@ -29,12 +30,12 @@ func GetValueFromHash(c *redis.Client, hash string) (map[string]string, error) {
 
 	if err != nil {
 		log.Print("Error while getting hash resource from Redis!")
-		return nil, &RedisGetHashError{}
+		return nil, custom_errors.RedisGetHashError(err)
 	}
 
 	if res == nil {
 		log.Print("No resource found for the given hash!")
-		return nil, &RedisGetHashNoResourceFoundError{}
+		return nil, custom_errors.RedisGetHashNoResourceFoundError(nil)
 	}
 
 	return res, nil
@@ -47,7 +48,7 @@ func SetValueToHash(c *redis.Client, hash string, resource map[string]string) er
 
 	if err != nil {
 		log.Print("Error while setting hash resource to Redis!")
-		return &RedisSetHasError{}
+		return custom_errors.RedisSetHasError(err)
 	}
 
 	return nil

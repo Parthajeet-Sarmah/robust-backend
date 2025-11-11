@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"local/bomboclat-oidc-service/database"
+	custom_errors "local/bomboclat-oidc-service/errors"
 	custom_types "local/bomboclat-oidc-service/types"
 	utils "local/bomboclat-oidc-service/utils"
 
@@ -55,14 +56,14 @@ func (us *UserService) Login(userDetails custom_types.UserLoginDetails) (*http.C
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			log.Println("Invalid user details")
-			return nil, &utils.UserNotFoundError{}
+			return nil, custom_errors.UserNotFoundError(err)
 		}
 		return nil, err
 	}
 
 	if data == nil {
 		log.Print("No user with this email!")
-		return nil, &utils.UserNotFoundError{}
+		return nil, custom_errors.UserNotFoundError(nil)
 	}
 
 	sessionID := uuid.New().String()
@@ -74,7 +75,7 @@ func (us *UserService) Login(userDetails custom_types.UserLoginDetails) (*http.C
 
 	if err := utils.SetValueToHash(us.RedisClient, "user_session:"+sessionID, userDetailsMap); err != nil {
 		log.Print(err)
-		return nil, &utils.RedisSetHasError{}
+		return nil, custom_errors.RedisSetHasError(err)
 	}
 
 	cookie := &http.Cookie{
@@ -100,7 +101,7 @@ func (us *UserService) Register(details custom_types.UserRegistrationDetails) er
 	}
 
 	if user != nil {
-		return &utils.UserAlreadyExistsError{}
+		return custom_errors.UserAlreadyExistsError(nil)
 	}
 
 	// TODO: Create new user if not
@@ -120,7 +121,7 @@ func (us *UserService) UserInfo(authToken string) (*custom_types.UserInfo, error
 	})
 
 	if err != nil {
-		return nil, &utils.TokenParsingError{}
+		return nil, custom_errors.TokenParsingError(err)
 	}
 
 	if claims, ok := token.Claims.(*custom_types.CustomClaims); ok && token.Valid {
@@ -141,6 +142,6 @@ func (us *UserService) UserInfo(authToken string) (*custom_types.UserInfo, error
 		return userInfo, nil
 	}
 
-	return nil, &utils.UnknownError{}
+	return nil, custom_errors.Internal("Unknown error", nil)
 
 }

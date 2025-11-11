@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"local/bomboclat-oauth-server/database"
+	custom_errors "local/bomboclat-oauth-server/errors"
 	"local/bomboclat-oauth-server/models"
 	custom_types "local/bomboclat-oauth-server/types"
 	utils "local/bomboclat-oauth-server/utils"
@@ -35,23 +36,21 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, &utils.ClientNotFoundError{}
+			return nil, custom_errors.ClientNotFoundError(err)
 		}
-		log.Print(err)
 		return nil, err
 	}
 
 	if client == nil {
-		return nil, &utils.ClientNotFoundError{}
+		return nil, custom_errors.ClientNotFoundError(nil)
 	}
 
 	if client.RedirectUri != nil && *client.RedirectUri != m.RedirectUri {
-		log.Print("Redirect URI for the client does not match!")
-		return nil, &utils.RedirectURIMismatchError{}
+		return nil, custom_errors.RedirectURIMismatchError(nil)
 	}
 
 	if userCookie == nil {
-		return nil, &utils.UserNotLoggedInError{}
+		return nil, custom_errors.UserNotLoggedInError(nil)
 	}
 
 	userKey := fmt.Sprintf("user_session:%s", userCookie.Value)
@@ -67,12 +66,12 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 
 	if !doesUserSessionExist {
 		// Send back to controller with user not logged in error for redirection to /login
-		return nil, &utils.UserNotLoggedInError{}
+		return nil, custom_errors.UserNotLoggedInError(nil)
 	}
 
 	if !scopeNotAllowed {
 		// Send back to controller with user scope denied error for redirection to /authorize/consent
-		return nil, &utils.UserScopeDeniedError{}
+		return nil, custom_errors.UserScopeDeniedError(nil)
 	}
 
 	randomBytes := make([]byte, 64)
@@ -106,8 +105,7 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 func (as *AuthorizationService) AuthorizeConsent(m custom_types.AuthorizationConsentModelInput, userCookie *http.Cookie) error {
 
 	if m.Decision == "deny" {
-		log.Print("Denied permission of data")
-		return &utils.UserScopeDeniedError{}
+		return custom_errors.UserScopeDeniedError(nil)
 	}
 
 	if m.Decision == "allow" {
@@ -119,8 +117,12 @@ func (as *AuthorizationService) AuthorizeConsent(m custom_types.AuthorizationCon
 		res, err := utils.GetValueFromHash(as.RedisClient, "user_session:"+sessionId)
 
 		if err != nil {
-			log.Print(err)
-			return &utils.RedisGetHashError{}
+			var appErr *custom_errors.AppError
+			if errors.As(err, &appErr) && appErr.Code == "REDIS_RESOURCE_NOT_FOUND" {
+				return custom_errors.New("USER_SESSION_NOT_FOUND", "This user session was not found", http.StatusUnauthorized, err)
+			} else {
+				return err
+			}
 		}
 
 		res["scope"] = "allow"
@@ -142,19 +144,19 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, &utils.ClientNotFoundError{}
+				return nil, custom_errors.ClientNotFoundError(err)
 			}
-			log.Print(err)
-			return nil, err
+			// TODO: Better errors here!
+			return nil, custom_errors.ClientNotFoundError(err)
 		}
 
 		if client == nil {
-			return nil, &utils.ClientNotFoundError{}
+			return nil, custom_errors.ClientNotFoundError(nil)
 		}
 
 		if client.RedirectUri != nil && *client.RedirectUri != m.RedirectUri {
 			log.Print("Redirect URI for the client does not match!")
-			return nil, &utils.RedirectURIMismatchError{}
+			return nil, custom_errors.RedirectURIMismatchError(nil)
 		}
 
 		//Validate the code with the ClientId and Redirect_Uri
@@ -166,11 +168,11 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 		}
 
 		if codeData.ClientId != m.ClientId {
-			return nil, &utils.ClientIdMismatchError{}
+			return nil, custom_errors.ClientIdMismatchError(nil)
 		} else if codeData.RedirectUri != m.RedirectUri {
-			return nil, &utils.RedirectURIMismatchError{}
+			return nil, custom_errors.RedirectURIMismatchError(nil)
 		} else if time.Now().UTC().Compare(codeData.ExpiresAt) == 1 {
-			return nil, &utils.ExpiredAuthCodeError{}
+			return nil, custom_errors.ExpiredAuthCodeError(nil)
 		}
 
 		//Verify the PKCE challenge
@@ -184,7 +186,7 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 		}
 
 		if codeChallenge != codeData.CodeChallenge {
-			return nil, &utils.CodeChallengeDoesNotMatchError{}
+			return nil, custom_errors.CodeChallengeDoesNotMatchError(nil)
 		}
 
 		var idToken string
@@ -317,13 +319,14 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 			return nil, err
 		}
 
+		// TODO: Conditional wrap logic, wrap the error first in DB
 		if err := database.UpdateAuthCodeEntryUsedStatus(as.DBConn, m.Code); err != nil {
-			return nil, &utils.AuthCodeUsedUpdateError{}
+			return nil, custom_errors.AuthCodeUsedUpdateError(err)
 		}
 
 		// NOTE: Mark auth code as used
 		if err := database.UpdateAuthCodeEntryUsedStatus(as.DBConn, m.Code); err != nil {
-			return nil, &utils.AuthCodeUsedUpdateError{}
+			return nil, custom_errors.AuthCodeUsedUpdateError(err)
 		}
 
 		return &custom_types.TokenResponse{
@@ -339,27 +342,21 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, &utils.RefreshTokenNotFoundError{
-					Status: http.StatusNotFound,
-					Msg:    "Refresh token not found",
-				}
+				return nil, custom_errors.RefreshTokenNotFoundError(err)
 			}
-			return nil, err
+			return nil, custom_errors.RefreshTokenNotFoundError(err)
 		}
 
 		if tokenData == nil {
-			return nil, &utils.RefreshTokenNotFoundError{
-				Status: http.StatusNotFound,
-				Msg:    "Refresh token not found",
-			}
+			return nil, custom_errors.RefreshTokenNotFoundError(nil)
 		}
 
 		if tokenData.ClientId != m.ClientId {
-			return nil, &utils.ClientIdMismatchError{}
+			return nil, custom_errors.RefreshTokenNotFoundError(nil)
 		}
 
 		if time.Now().UTC().Compare(tokenData.ExpiresAt) == 1 {
-			return nil, &utils.ExpiredRefreshTokenError{}
+			return nil, custom_errors.ExpiredRefreshTokenError(nil)
 		}
 
 		expiresAt := time.Now().Add(10 * time.Minute) // 10 minutes
@@ -415,7 +412,7 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 		}, nil
 
 	default:
-		return nil, &utils.InvalidGrantType{}
+		return nil, custom_errors.InvalidGrantTypeError(nil)
 	}
 }
 

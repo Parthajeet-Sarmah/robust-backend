@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"local/bomboclat-oauth-server/database"
+	custom_errors "local/bomboclat-oauth-server/errors"
 	custom_types "local/bomboclat-oauth-server/types"
 	utils "local/bomboclat-oauth-server/utils"
 
@@ -24,7 +25,7 @@ func (as *IntrospectService) Introspect(m *custom_types.InstrospectModelInput) (
 		}
 
 		if tokenData == nil {
-			return nil, &utils.NoAccessTokenFoundError{}
+			return nil, custom_errors.NoAccessTokenFoundError(nil)
 		}
 
 		// NOTE: Get RSA public key
@@ -38,7 +39,7 @@ func (as *IntrospectService) Introspect(m *custom_types.InstrospectModelInput) (
 		})
 
 		if err != nil {
-			return nil, &utils.TokenParsingError{}
+			return nil, custom_errors.TokenParsingError(err)
 		}
 
 		if claims, ok := token.Claims.(*custom_types.CustomClaims); ok && token.Valid {
@@ -60,7 +61,7 @@ func (as *IntrospectService) Introspect(m *custom_types.InstrospectModelInput) (
 			return &m, nil
 		}
 
-		return nil, &utils.TokenParsingError{}
+		return nil, custom_errors.TokenParsingError(nil)
 	case "refresh_token":
 		tokenHash := utils.HashToken256(m.Token)
 
@@ -71,7 +72,7 @@ func (as *IntrospectService) Introspect(m *custom_types.InstrospectModelInput) (
 		}
 
 		if tokenData == nil {
-			return nil, &utils.NoAccessTokenFoundError{}
+			return nil, custom_errors.NoAccessTokenFoundError(nil)
 		}
 
 		isTokenActive := !tokenData.Revoked && tokenData.ExpiresAt.Unix() > time.Now().UTC().Unix()

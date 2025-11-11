@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -9,10 +10,10 @@ import (
 	"net/url"
 	"os"
 
+	custom_errors "local/bomboclat-oauth-server/errors"
 	"local/bomboclat-oauth-server/models"
 	"local/bomboclat-oauth-server/services"
 	custom_types "local/bomboclat-oauth-server/types"
-	utils "local/bomboclat-oauth-server/utils"
 )
 
 type AuthorizationController struct{}
@@ -47,7 +48,9 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 
 	callback_url, err := services.AuthorizationService.AuthorizeUserAndGenerateCode(authRequestModelInput, userCookie)
 
-	if _, ok := err.(*utils.UserNotLoggedInError); ok {
+	var appError *custom_errors.AppError
+
+	if errors.As(err, &appError) && appError.Code == "USER_NOT_LOGGED_IN" {
 		// NOTE: Redirect to /login route
 		log.Println("User is not logged in")
 
@@ -56,9 +59,8 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 
 		http.Redirect(w, r, loginBaseUrl+loginUrl, http.StatusFound)
 		return
-	}
 
-	if _, ok := err.(*utils.UserScopeDeniedError); ok {
+	} else if errors.As(err, &appError) && appError.Code == "USER_SCOPE_DENIED" {
 
 		log.Println("User has not given consent!")
 		authConsentUrl := fmt.Sprintf("/authorize/consent?client_id=%s&redirect_uri=%s&scope=%s&next=%s",
@@ -69,9 +71,8 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 
 		http.Redirect(w, r, authConsentUrl, http.StatusFound)
 		return
-	}
 
-	if err != nil {
+	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -161,10 +162,10 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 	token, err := services.AuthorizationService.GenerateToken(m)
 
 	if err != nil {
+		var appErr *custom_errors.AppError
 
-		if _, ok := err.(*utils.RefreshTokenNotFoundError); ok {
-			_err := err.(*utils.RefreshTokenNotFoundError)
-			http.Error(w, _err.Msg, _err.Status)
+		if errors.As(err, &appErr) && appErr.Code == "REFRESH_TOKEN_NOT_FOUND" {
+			http.Error(w, appErr.Msg, appErr.HttpStatus)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
