@@ -320,10 +320,6 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 		}
 
 		// TODO: Conditional wrap logic, wrap the error first in DB
-		if err := database.UpdateAuthCodeEntryUsedStatus(as.DBConn, m.Code); err != nil {
-			return nil, custom_errors.AuthCodeUsedUpdateError(err)
-		}
-
 		// NOTE: Mark auth code as used
 		if err := database.UpdateAuthCodeEntryUsedStatus(as.DBConn, m.Code); err != nil {
 			return nil, custom_errors.AuthCodeUsedUpdateError(err)

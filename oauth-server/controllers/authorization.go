@@ -11,6 +11,7 @@ import (
 	"os"
 
 	custom_errors "local/bomboclat-oauth-server/errors"
+	"local/bomboclat-oauth-server/middlewares"
 	"local/bomboclat-oauth-server/models"
 	"local/bomboclat-oauth-server/services"
 	custom_types "local/bomboclat-oauth-server/types"
@@ -157,6 +158,14 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 		CodeVerifier:        r.FormValue("code_verifier"),
 		CodeChallengeMethod: r.FormValue("code_challenge_method"),
 		RefreshToken:        r.FormValue("refresh_token"),
+	}
+
+	// NOTE: Middleware to check if client is authorized (client_secret_basic)
+	_, err := middlewares.MiddlewareService.AuthorizeClient(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
 	}
 
 	token, err := services.AuthorizationService.GenerateToken(m)

@@ -2,6 +2,9 @@ package custom_errors
 
 import "net/http"
 
+func UnauthorizedClientError(cause error) *AppError {
+	return New("UNAUTHORIZED_CLIENT", "The client is unauthorized", http.StatusUnauthorized, cause)
+}
 func ExpiredAuthCodeError(cause error) *AppError {
 	return New("AUTH_CODE_EXPIRED", "The auth code has expired", http.StatusGone, cause)
 }

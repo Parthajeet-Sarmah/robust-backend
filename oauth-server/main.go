@@ -11,6 +11,7 @@ import (
 	"os"
 
 	database "local/bomboclat-oauth-server/database"
+	"local/bomboclat-oauth-server/middlewares"
 	"local/bomboclat-oauth-server/routers"
 	"local/bomboclat-oauth-server/services"
 	custom_types "local/bomboclat-oauth-server/types"
@@ -28,6 +29,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	middlewares.InjectDBToServices(dbPool)
 	services.InjectDBToServices(dbPool)
 	database.CreateDatabaseTables(dbPool)
 
@@ -37,6 +40,8 @@ func main() {
 		log.Fatal(err)
 		return
 	}
+
+	middlewares.InjectRedisClientToServices(redisClient)
 	services.InjectRedisClientToServices(redisClient)
 
 	//Sub routes

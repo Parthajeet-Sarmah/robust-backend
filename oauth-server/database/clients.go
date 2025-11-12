@@ -32,6 +32,27 @@ func FindClientById(pg *custom_types.Postgres, ctx context.Context, client_id st
 	return &data, nil
 }
 
+func FindClientByIdAndSecretHash(pg *custom_types.Postgres, ctx context.Context, clientId string, secretHash string) (*models.ClientDatabaseModel, error) {
+
+	query := `SELECT * FROM clients WHERE client_id = @clientId AND client_secret_hash = @clientSecretHash LIMIT 1`
+	args := pgx.NamedArgs{"clientId": clientId, "@clientSecretHash": secretHash}
+	rows, err := pg.DB.Query(ctx, query, args)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.ClientDatabaseModel])
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+}
+
 func InsertClient(pg *custom_types.Postgres, ctx context.Context, m *custom_types.ClientDatabaseModelInput) error {
 	query := `INSERT INTO clients (
 		client_secret_hash,
