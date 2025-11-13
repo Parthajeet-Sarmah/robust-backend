@@ -35,7 +35,7 @@ func FindClientById(pg *custom_types.Postgres, ctx context.Context, client_id st
 func FindClientByIdAndSecretHash(pg *custom_types.Postgres, ctx context.Context, clientId string, secretHash string) (*models.ClientDatabaseModel, error) {
 
 	query := `SELECT * FROM clients WHERE client_id = @clientId AND client_secret_hash = @clientSecretHash LIMIT 1`
-	args := pgx.NamedArgs{"clientId": clientId, "@clientSecretHash": secretHash}
+	args := pgx.NamedArgs{"clientId": clientId, "clientSecretHash": secretHash}
 	rows, err := pg.DB.Query(ctx, query, args)
 
 	if err != nil {

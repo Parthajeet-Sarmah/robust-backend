@@ -8,6 +8,9 @@ func UnauthorizedClientError(cause error) *AppError {
 func ExpiredAuthCodeError(cause error) *AppError {
 	return New("AUTH_CODE_EXPIRED", "The auth code has expired", http.StatusGone, cause)
 }
+func AuthCodeAlreadyUsedError(cause error) *AppError {
+	return New("AUTH_CODE_ALREADY_USED", "The auth code has already been used", http.StatusGone, cause)
+}
 func ExpiredRefreshTokenError(cause error) *AppError {
 	return New("REFRESH_TOKEN_EXPIRED", "The refresh token has expired", http.StatusGone, cause)
 }

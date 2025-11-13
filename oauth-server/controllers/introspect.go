@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"local/bomboclat-oauth-server/middlewares"
 	"local/bomboclat-oauth-server/services"
 	custom_types "local/bomboclat-oauth-server/types"
 )
@@ -11,6 +12,12 @@ import (
 type IntrospectController struct{}
 
 func (controller *IntrospectController) Introspect(w http.ResponseWriter, r *http.Request) {
+
+	_, err := middlewares.MiddlewareService.AuthorizeClient(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+	}
 
 	m := &custom_types.InstrospectModelInput{
 		Token:         r.FormValue("token"),

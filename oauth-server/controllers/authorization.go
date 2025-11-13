@@ -31,8 +31,9 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 	code_challenge := r.URL.Query().Get("code_challenge")
 	code_challenge_method := r.URL.Query().Get("code_challenge_method")
 
-	if code_challenge_method == "" && code_challenge == "" {
-		code_challenge_method = "plain"
+	if code_challenge_method == "" || code_challenge == "" {
+		http.Error(w, errors.New("No code challenge method or code challenge provided").Error(), http.StatusInternalServerError)
+		return
 	}
 
 	authRequestModelInput := custom_types.AuthorizationRequestModelInput{
@@ -121,6 +122,11 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 		}
 
 		userCookie, err := r.Cookie("session_id")
+
+		if !userCookie.HttpOnly || !userCookie.Secure || userCookie.SameSite != http.SameSiteLaxMode {
+			http.Error(w, errors.New("Invalid or malformed cookie").Error(), http.StatusInternalServerError)
+			return
+		}
 
 		if err != nil {
 			log.Print("No cookie found!")

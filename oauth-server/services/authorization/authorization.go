@@ -31,6 +31,10 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 	userCookie *http.Cookie,
 ) (*string, error) {
 
+	if m.State == "" {
+		return nil, custom_errors.Internal("No state was provided", nil)
+	}
+
 	// NOTE: Check if client is registered with this service
 	client, err := database.FindClientById(as.DBConn, context.Background(), m.ClientId)
 
@@ -45,6 +49,7 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 		return nil, custom_errors.ClientNotFoundError(nil)
 	}
 
+	// TODO: Multiple URL check, open redirects, HTTPS check
 	if client.RedirectUri != nil && *client.RedirectUri != m.RedirectUri {
 		return nil, custom_errors.RedirectURIMismatchError(nil)
 	}
@@ -173,6 +178,8 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 			return nil, custom_errors.RedirectURIMismatchError(nil)
 		} else if time.Now().UTC().Compare(codeData.ExpiresAt) == 1 {
 			return nil, custom_errors.ExpiredAuthCodeError(nil)
+		} else if codeData.Used {
+			return nil, custom_errors.AuthCodeAlreadyUsedError(nil)
 		}
 
 		//Verify the PKCE challenge
