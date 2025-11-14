@@ -12,11 +12,17 @@ import "time"
 //		updated_at TIMESTAMP DEFAULT now()
 //	)`
 
+type UserConsentsModel struct {
+	UserId   string
+	ClientId string
+	Scopes   string
+}
+
 type UserDatabaseModel struct {
-	Id           int
+	Id           int `db:"-"`
 	Username     string
 	Email        string
-	PasswordHash string
+	PasswordHash string `db:"-"`
 	UUID         string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

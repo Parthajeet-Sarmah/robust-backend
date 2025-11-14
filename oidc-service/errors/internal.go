@@ -14,6 +14,9 @@ func CouldNotFetchAuthCodeError(cause error) *AppError {
 func CouldNotFetchUserDataError(cause error) *AppError {
 	return New("USER_DATA_FETCH_FAILED", "User data could not be fetched", http.StatusInternalServerError, cause)
 }
+func RedisTooManyExpiryTimesError(cause error) *AppError {
+	return New("REDIS_EXCESS_EXPIRY", "Too many expiry times provided", http.StatusInternalServerError, cause)
+}
 func RedisCouldNotCreateClientError(cause error) *AppError {
 	return New("REDIS_CLIENT_INIT_FAILED", "Could not initialise Redis client", http.StatusInternalServerError, cause)
 }

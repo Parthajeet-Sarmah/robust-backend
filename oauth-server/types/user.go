@@ -11,6 +11,12 @@ type Postgres struct {
 	DB *pgxpool.Pool
 }
 
+type UserConsentInput struct {
+	UserId   string
+	ClientId string
+	Scopes   string
+}
+
 type UserDatabaseModelInput struct {
 	Username     string
 	Email        string

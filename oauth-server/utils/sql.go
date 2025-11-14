@@ -161,7 +161,8 @@ func CreateConsentsTable(pg *custom_types.Postgres) error {
 		scopes TEXT,
 		updated_at TIMESTAMP DEFAULT now(),
 		created_at TIMESTAMP DEFAULT now(),
-		FOREIGN KEY (client_id) REFERENCES clients(client_id)
+		FOREIGN KEY (client_id) REFERENCES clients(client_id),
+		UNIQUE (user_id, client_id)
 	)`
 
 	_, err := pg.DB.Exec(context.Background(), query)

@@ -113,9 +113,11 @@
     <h3>For the following scopes:</h3>
     <h3 style="color: var(--fg); font-weight: 600;">{{ .Scope }}</h3>
 
-    <form method="POST" action="/authorize/consent?next={{ .Next }}">
+    <form method="POST" action="/authorize/consent">
+      <input type="hidden" name="scope" value="{{ .Scope }}" />
       <input type="hidden" name="client_id" value="{{ .ClientId }}" />
       <input type="hidden" name="redirect_uri" value="{{ .RedirectUri }}" />
+      <input type="hidden" name="next" value="{{ .Next }}" />
       <button name="decision" value="allow">Allow</button>
       <button name="decision" value="deny">Deny</button>
     </form>

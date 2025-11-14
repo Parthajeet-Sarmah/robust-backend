@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"local/bomboclat-oidc-service/database"
 	custom_errors "local/bomboclat-oidc-service/errors"
@@ -69,11 +70,12 @@ func (us *UserService) Login(userDetails custom_types.UserLoginDetails) (*http.C
 	sessionID := uuid.New().String()
 
 	userDetailsMap := map[string]string{
-		"user_id": data.UUID,
-		"scope":   "deny",
+		"user_id":    data.UUID,
+		"scope":      "deny",
+		"expires_at": time.Now().Add(time.Minute * 5).Format(time.RFC3339),
 	}
 
-	if err := utils.SetValueToHash(us.RedisClient, "user_session:"+sessionID, userDetailsMap); err != nil {
+	if err := utils.SetValueToHash(us.RedisClient, "user_session:"+sessionID, userDetailsMap, time.Duration(time.Minute*5)); err != nil {
 		log.Print(err)
 		return nil, custom_errors.RedisSetHasError(err)
 	}

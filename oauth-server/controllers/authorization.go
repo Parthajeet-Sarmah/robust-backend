@@ -9,12 +9,15 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
+	"local/bomboclat-oauth-server/database"
 	custom_errors "local/bomboclat-oauth-server/errors"
 	"local/bomboclat-oauth-server/middlewares"
 	"local/bomboclat-oauth-server/models"
 	"local/bomboclat-oauth-server/services"
 	custom_types "local/bomboclat-oauth-server/types"
+	utils "local/bomboclat-oauth-server/utils"
 )
 
 type AuthorizationController struct{}
@@ -28,10 +31,10 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 	state := r.URL.Query().Get("random_state")
 
 	//Extra security by PKCE
-	code_challenge := r.URL.Query().Get("code_challenge")
-	code_challenge_method := r.URL.Query().Get("code_challenge_method")
+	codeChallenge := r.URL.Query().Get("code_challenge")
+	codeChallengeMethod := r.URL.Query().Get("code_challenge_method")
 
-	if code_challenge_method == "" || code_challenge == "" {
+	if codeChallengeMethod == "" || codeChallenge == "" {
 		http.Error(w, errors.New("No code challenge method or code challenge provided").Error(), http.StatusInternalServerError)
 		return
 	}
@@ -42,8 +45,8 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 		ResponseType:        response_type,
 		Scope:               scope,
 		State:               state,
-		CodeChallenge:       code_challenge,
-		CodeChallengeMethod: code_challenge_method,
+		CodeChallenge:       codeChallenge,
+		CodeChallengeMethod: codeChallengeMethod,
 	}
 
 	userCookie, _ := r.Cookie("session_id")
@@ -91,6 +94,58 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 		redirect_uri := r.URL.Query().Get("redirect_uri")
 		next := r.URL.Query().Get("next")
 
+		// Get user session to check for existing consent
+		userCookie, err := r.Cookie("session_id")
+		if err != nil {
+			// No session - redirect to login
+			loginBaseUrl := os.Getenv("OIDC_BASE_URL")
+			loginUrl := "/users/login?next=" + url.QueryEscape(r.URL.RequestURI())
+			http.Redirect(w, r, loginBaseUrl+loginUrl, http.StatusFound)
+			return
+		}
+
+		// Get user ID from session
+		userKey := fmt.Sprintf("user_session:%s", userCookie.Value)
+		res, err := utils.GetValueFromHash(services.AuthorizationService.RedisClient, userKey)
+		if err != nil || res == nil {
+			// Invalid session - redirect to login
+			loginBaseUrl := os.Getenv("OIDC_BASE_URL")
+			loginUrl := "/users/login?next=" + url.QueryEscape(r.URL.RequestURI())
+			http.Redirect(w, r, loginBaseUrl+loginUrl, http.StatusFound)
+			return
+		}
+
+		userId := res["user_id"]
+		if userId == "" {
+			http.Error(w, "User ID not found in session", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if user has already consented to this client
+		consent, err := database.FindConsent(services.AuthorizationService.DBConn, userId, client_id)
+		if err != nil {
+			log.Printf("Error checking consent: %v", err)
+			// Continue to show consent screen on error
+		}
+
+		if consent != nil {
+			// User has previously consented
+			// Check if requested scopes are a subset of previously granted scopes
+			if scopesAreSubset(scope, consent.Scopes) {
+				// Auto-approve: set consent in session and redirect to next
+				res["scope"] = "allow"
+				utils.SetValueToHash(services.AuthorizationService.RedisClient, userKey, res)
+
+				if next == "" {
+					next = "/"
+				}
+				http.Redirect(w, r, next, http.StatusFound)
+				return
+			}
+			// If requesting additional scopes, show consent screen
+		}
+
+		// Show consent screen (first time or requesting new scopes)
 		wd, err := os.Getwd()
 		if err != nil {
 			log.Fatal(err)
@@ -113,6 +168,7 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 		scope := r.FormValue("scope")
 		decision := r.FormValue("decision")
 		redirect_uri := r.FormValue("redirect_uri")
+		next := r.FormValue("next")
 
 		authConsentModelInput := custom_types.AuthorizationConsentModelInput{
 			ClientId:    client_id,
@@ -122,30 +178,49 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 		}
 
 		userCookie, err := r.Cookie("session_id")
-
-		if !userCookie.HttpOnly || !userCookie.Secure || userCookie.SameSite != http.SameSiteLaxMode {
-			http.Error(w, errors.New("Invalid or malformed cookie").Error(), http.StatusInternalServerError)
+		if err != nil {
+			http.Error(w, "No session cookie found", http.StatusUnauthorized)
 			return
 		}
 
-		if err != nil {
-			log.Print("No cookie found!")
+		// Get user ID from session
+		userKey := fmt.Sprintf("user_session:%s", userCookie.Value)
+		res, err := utils.GetValueFromHash(services.AuthorizationService.RedisClient, userKey)
+		if err != nil || res == nil {
+			http.Error(w, "Invalid session", http.StatusUnauthorized)
+			return
+		}
+
+		userId := res["user_id"]
+		if userId == "" {
+			http.Error(w, "User ID not found in session", http.StatusUnauthorized)
 			return
 		}
 
 		err = services.AuthorizationService.AuthorizeConsent(authConsentModelInput, userCookie)
-
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		next := r.URL.Query().Get("next")
+		// If user allowed, persist consent to database
+		if decision == "allow" {
+			err = database.UpsertConsent(services.AuthorizationService.DBConn, &models.ConsentModel{
+				UserId:   userId,
+				ClientId: client_id,
+				Scopes:   scope,
+			})
+			if err != nil {
+			log.Printf("Error saving consent: %v", err)
+				// Continue anyway - session consent is set
+			}
+		}
+
 		if next == "" {
 			next = "/"
 		}
 
-		http.Redirect(w, r, r.URL.Query().Get("next"), http.StatusFound)
+		http.Redirect(w, r, next, http.StatusFound)
 		return
 	}
 
@@ -162,7 +237,7 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 		ClientId:            r.FormValue("client_id"),
 		ClientSecretHash:    r.FormValue("client_secret_hash"),
 		CodeVerifier:        r.FormValue("code_verifier"),
-		CodeChallengeMethod: r.FormValue("code_challenge_method"),
+		CodeChallengeMethod: r.FormValue("codeChallenge_method"),
 		RefreshToken:        r.FormValue("refresh_token"),
 	}
 
@@ -209,4 +284,28 @@ func (controller *AuthorizationController) RevokeToken(w http.ResponseWriter, r 
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// scopesAreSubset checks if requestedScopes is a subset of grantedScopes
+func scopesAreSubset(requestedScopes, grantedScopes string) bool {
+	// Split space-separated scopes
+	requested := strings.Split(strings.TrimSpace(requestedScopes), " ")
+	granted := strings.Split(strings.TrimSpace(grantedScopes), " ")
+
+	// Create a map of granted scopes for quick lookup
+	grantedMap := make(map[string]bool)
+	for _, scope := range granted {
+		if scope != "" {
+			grantedMap[scope] = true
+		}
+	}
+
+	// Check if all requested scopes are in granted scopes
+	for _, scope := range requested {
+		if scope != "" && !grantedMap[scope] {
+			return false // Requesting a new scope
+		}
+	}
+
+	return true
 }

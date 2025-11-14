@@ -3,8 +3,6 @@ package authorization
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -35,6 +33,25 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 		return nil, custom_errors.Internal("No state was provided", nil)
 	}
 
+	if userCookie != nil {
+		fmt.Print("user_session:" + userCookie.Value)
+		res, err := utils.GetValueFromHash(as.RedisClient, "user_session:"+userCookie.Value)
+
+		if err != nil {
+			return nil, custom_errors.RedisGetHashError(err)
+		}
+
+		expiryStr, exists := res["expires_at"]
+		if !exists {
+			return nil, custom_errors.Internal("Session has no expiry", nil)
+		}
+
+		expiry, err := time.Parse(time.RFC3339, expiryStr)
+		if err != nil || time.Now().After(expiry) {
+			return nil, custom_errors.Internal("Session has expired", nil)
+		}
+	}
+
 	// NOTE: Check if client is registered with this service
 	client, err := database.FindClientById(as.DBConn, context.Background(), m.ClientId)
 
@@ -62,19 +79,31 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 	res, err := utils.GetValueFromHash(as.RedisClient, userKey)
 
 	if err != nil {
-		log.Print(err)
 		return nil, err
 	}
 
 	doesUserSessionExist := res != nil
-	scopeNotAllowed := res["scope"] != "deny"
+
+	// NOTE: Check for scopes in the 'consents' table
+	consent, err := database.FindUserConsent(as.DBConn, context.Background(), res["user_id"], m.ClientId)
+	isScopePresentAndEqual := consent != nil && consent.Scopes == m.Scope
+
+	fmt.Print(consent, isScopePresentAndEqual)
+
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+	}
+
+	scopeAllowed := res["scope"] != "deny" && isScopePresentAndEqual
 
 	if !doesUserSessionExist {
 		// Send back to controller with user not logged in error for redirection to /login
 		return nil, custom_errors.UserNotLoggedInError(nil)
 	}
 
-	if !scopeNotAllowed {
+	if !scopeAllowed {
 		// Send back to controller with user scope denied error for redirection to /authorize/consent
 		return nil, custom_errors.UserScopeDeniedError(nil)
 	}
@@ -134,6 +163,15 @@ func (as *AuthorizationService) AuthorizeConsent(m custom_types.AuthorizationCon
 
 		utils.SetValueToHash(as.RedisClient, "user_session:"+sessionId, res)
 
+		consent := custom_types.UserConsentInput{
+			UserId:   res["user_id"],
+			ClientId: m.ClientId,
+			Scopes:   m.Scope,
+		}
+
+		// NOTE: Persist consent in 'consents' table for future use
+		database.InsertUserConsent(as.DBConn, context.Background(), &consent)
+
 		return nil
 	}
 
@@ -186,10 +224,7 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 		var codeChallenge string
 
 		if m.CodeChallengeMethod == "S256" {
-			hash := sha256.Sum256([]byte(m.CodeVerifier))
-			codeChallenge = base64.RawURLEncoding.EncodeToString(hash[:])
-		} else {
-			codeChallenge = m.CodeVerifier
+			codeChallenge = utils.HashToken256(m.CodeVerifier)
 		}
 
 		if codeChallenge != codeData.CodeChallenge {

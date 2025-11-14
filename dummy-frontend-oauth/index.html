@@ -133,6 +133,24 @@
   </div>
 
   <script>
+
+    async function hashToken256(token) {
+      const data = new TextEncoder().encode(token);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+
+      let binary = "";
+      const bytes = new Uint8Array(hashBuffer);
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+
+      return base64
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+    }
+
     const button = document.getElementById("loginButton");
     const successMsg = document.getElementById("successMsg");
     const errorMsg = document.getElementById("errorMsg");
@@ -151,9 +169,11 @@
       const redirectUri = `http://localhost:5500/oauth/callback.html`;
       const state = "hello123";
       const scope = "openid profile email";
+      const codeVerifier = hashToken256("localhost")
+      const codeChallengeMethod = "S256"
 
       const authUrl =
-        `http://localhost:9000/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&random_state=${state}`;
+        `http://localhost:9000/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&random_state=${state}&code_challenge=${codeVerifier}&code_challenge_method=${codeChallengeMethod}`;
 
       const popup = window.open(
         authUrl,
