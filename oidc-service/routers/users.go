@@ -19,6 +19,7 @@ func (h *UserRouterHandler) RegisterRoutes() *http.ServeMux {
 	//r.HandleFunc("POST /register", controller.Register)
 	r.HandleFunc("GET /id/{id}", controller.GetUserById)
 	r.HandleFunc("/login", controller.Login)
+	r.HandleFunc("GET /logout", controller.Logout)
 	r.HandleFunc("GET /userinfo", controller.UserInfo)
 	r.HandleFunc("POST /register", controller.Register)
 	//r.HandleFunc("POST /authorize/consent", controller.AuthorizeConsent)

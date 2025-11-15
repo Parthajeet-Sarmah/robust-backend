@@ -26,6 +26,7 @@ go.work.sum
 
 # env file
 .env
+oauth_oidc_gap_analysis.md
 WARP.md
 # Editor/IDE
 # .idea/

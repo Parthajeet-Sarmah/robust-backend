@@ -20,6 +20,9 @@ func RedisTooManyExpiryTimesError(cause error) *AppError {
 func RedisCouldNotCreateClientError(cause error) *AppError {
 	return New("REDIS_CLIENT_INIT_FAILED", "Could not initialise Redis client", http.StatusInternalServerError, cause)
 }
+func RedisDeleteHashError(cause error) *AppError {
+	return New("REDIS_DELETE_ERROR", "The specified hash could not be deleted", http.StatusInternalServerError, cause)
+}
 func RedisGetHashError(cause error) *AppError {
 	return New("REDIS_GET_ERROR", "The specified hash could not be fetched", http.StatusInternalServerError, cause)
 }

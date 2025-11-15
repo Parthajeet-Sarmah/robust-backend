@@ -34,7 +34,6 @@
       position: relative;
     }
 
-    /* Glowing background elements */
     .glow {
       position: absolute;
       width: 500px;
@@ -79,25 +78,20 @@
       padding: 1rem 2.25rem;
       font-size: 1rem;
       font-weight: 600;
-      letter-spacing: 0.3px;
       cursor: pointer;
       transition: all 0.25s ease;
-      box-shadow: 0 0 0 rgba(255, 255, 255, 0);
     }
 
     button:hover {
       transform: scale(1.03);
-      box-shadow: 0 0 30px rgba(255, 255, 255, 0.15);
     }
 
     button:active {
       transform: scale(0.98);
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
     }
 
     .label {
       font-size: 0.9rem;
-      font-weight: 400;
       color: rgba(255, 255, 255, 0.55);
       margin-top: 1rem;
     }
@@ -106,7 +100,7 @@
       margin-top: 1.5rem;
       font-weight: 500;
       opacity: 0;
-      transition: opacity 0.4s ease;
+      transition: opacity 0.4s;
     }
 
     .success.visible {
@@ -115,10 +109,10 @@
     }
 
     .error.visible {
-      opacity: 1;
       color: #ff4b4b;
     }
   </style>
+
 </head>
 
 <body>
@@ -127,79 +121,119 @@
 
   <div class="container">
     <button id="loginButton">Login with Bomboclat Auth</button>
-    <div class="label">Secure OAuth 2.0 Authorization</div>
+    <button id="logoutButton" style="margin-top:20px; display:none;">Logout</button>
+
+    <div class="label">Secure OAuth 2.0 + OIDC Authorization</div>
     <div class="success" id="successMsg">✅ Logged in successfully!</div>
     <div class="success error" id="errorMsg">❌ Login failed or canceled.</div>
   </div>
 
   <script>
-
     async function hashToken256(token) {
       const data = new TextEncoder().encode(token);
       const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-
       let binary = "";
       const bytes = new Uint8Array(hashBuffer);
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
       const base64 = btoa(binary);
-
-      return base64
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
+      return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     }
 
-    const button = document.getElementById("loginButton");
+    const loginButton = document.getElementById("loginButton");
+    const logoutButton = document.getElementById("logoutButton");
     const successMsg = document.getElementById("successMsg");
     const errorMsg = document.getElementById("errorMsg");
 
-    button.addEventListener("click", () => {
+    // ------------------------------
+    // OIDC CONFIG — replace with yours
+    // ------------------------------
+    const OIDC_END_SESSION_ENDPOINT = "http://localhost:9030/users/logout";
+    const POST_LOGOUT_REDIRECT_URI = "http://localhost:5500/logged-out.html";
+
+    const CLIENT_ID = "744d573a-f367-4f38-8332-505b62df4cf9";
+    const CLIENT_SECRET_HASH = "asd";
+    const CODE_VERIFIER = "localhost";
+    const CODE_CHALLENGE_METHOD = "S256";
+    const REDIRECT_URI = "http://localhost:5500/oauth/callback.html";
+    const SCOPE = "openid profile email";
+
+
+    // ==========================================
+    // LOGIN FLOW (POPUP)
+    // ==========================================
+    loginButton.addEventListener("click", async () => {
       successMsg.classList.remove("visible");
       errorMsg.classList.remove("visible");
 
-      const width = 480;
-      const height = 640;
-      const left = (window.screen.width / 2) - (width / 2);
-      const top = (window.screen.height / 2) - (height / 2);
+      const width = 480, height = 640;
+      const left = (screen.width / 2) - (width / 2);
+      const top = (screen.height / 2) - (height / 2);
 
-      // Your OAuth /authorize endpoint — adjust as needed
-      const clientId = "744d573a-f367-4f38-8332-505b62df4cf9";
-      const redirectUri = `http://localhost:5500/oauth/callback.html`;
       const state = "hello123";
-      const scope = "openid profile email";
-      const codeVerifier = hashToken256("localhost")
-      const codeChallengeMethod = "S256"
+      const codeVerifier = await hashToken256("localhost");
+      const codeChallengeMethod = "S256";
 
       const authUrl =
-        `http://localhost:9000/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&random_state=${state}&code_challenge=${codeVerifier}&code_challenge_method=${codeChallengeMethod}`;
+        `http://localhost:9000/authorize?client_id=${CLIENT_ID}`
+        + `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
+        + `&scope=${encodeURIComponent(SCOPE)}`
+        + `&random_state=${state}`
+        + `&code_challenge=${codeVerifier}`
+        + `&code_challenge_method=${codeChallengeMethod}`;
 
       const popup = window.open(
         authUrl,
         "BomboclatAuthWindow",
-        `width=${width},height=${height},top=${top},left=${left},resizable=no,scrollbars=yes,status=no`
+        `width=${width},height=${height},top=${top},left=${left}`
       );
 
-      // Listen for messages from popup
       window.addEventListener("message", (event) => {
-        if (event.origin !== window.location.origin) return; // optional origin check
+        if (event.origin !== window.location.origin) return;
 
         if (event.data.type === "bomboclat-auth-success") {
-          const {code, state: returnedState} = event.data;
+          const {code, state: returnedState, id_token} = event.data;
+
           if (returnedState !== state) {
-            errorMsg.textContent = "⚠️ State mismatch — possible CSRF attack!";
+            errorMsg.textContent = "⚠️ State mismatch — possible CSRF.";
             errorMsg.classList.add("visible");
             return;
           }
 
-          successMsg.classList.add("visible");
-          console.log("Authorization Code:", code);
+          const params = new URLSearchParams();
+          params.append("client_id", CLIENT_ID);
+          params.append("client_secret_hash", CLIENT_SECRET_HASH);
+          params.append("code_verifier", CODE_VERIFIER);
+          params.append("code_challenge_method", CODE_CHALLENGE_METHOD);
+          params.append("code", code);
+          params.append("redirect_uri", REDIRECT_URI);
+          params.append("grant_type", "authorization_code");
 
-          // Example: exchange code for token
-          // fetch("/token", { method: "POST", body: JSON.stringify({ code, redirect_uri: redirectUri }) });
+          fetch("http://localhost:9000/authorize/token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              "Authorization": `Basic NzQ0ZDU3M2EtZjM2Ny00ZjM4LTgzMzItNTA1YjYyZGY0Y2Y5OmFzZA==`
+            },
+            body: params
+          })
+            .then(res => res.json())
+            .then(tokens => {
 
-          if (popup) popup.close();
+              // Store what_logout_needs
+              localStorage.setItem("id_token", tokens.idToken);
+              localStorage.setItem("access_token", tokens.accessToken);
+              localStorage.setItem("refresh_token", tokens.refreshToken);
+
+              successMsg.classList.add("visible");
+              logoutButton.style.display = "inline-block";
+
+              if (popup) popup.close();
+            })
+            .catch(err => {
+              console.error("Token exchange failed:", err);
+              errorMsg.textContent = "❌ Token exchange failed.";
+              errorMsg.classList.add("visible");
+            });
         }
 
         if (event.data.type === "bomboclat-auth-error") {
@@ -209,7 +243,32 @@
         }
       });
     });
+
+
+    // ==========================================
+    // OIDC LOGOUT FLOW
+    // ==========================================
+    logoutButton.addEventListener("click", () => {
+      const idToken = localStorage.getItem("id_token");
+      localStorage.removeItem("id_token");
+
+      if (!idToken) {
+        alert("No ID token found — cannot perform OIDC logout.");
+        return;
+      }
+
+      // Build OIDC logout URL
+      const logoutUrl =
+        `${OIDC_END_SESSION_ENDPOINT}`
+        + `?id_token_hint=${encodeURIComponent(idToken)}`
+        + `&post_logout_redirect_uri=${encodeURIComponent(POST_LOGOUT_REDIRECT_URI)}`;
+
+      // Redirect browser — MUST be full navigation
+      window.location.href = logoutUrl;
+    });
+
   </script>
+
 </body>
 
 </html>

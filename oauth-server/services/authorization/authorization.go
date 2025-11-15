@@ -34,7 +34,6 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 	}
 
 	if userCookie != nil {
-		fmt.Print("user_session:" + userCookie.Value)
 		res, err := utils.GetValueFromHash(as.RedisClient, "user_session:"+userCookie.Value)
 
 		if err != nil {
@@ -87,8 +86,6 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 	// NOTE: Check for scopes in the 'consents' table
 	consent, err := database.FindUserConsent(as.DBConn, context.Background(), res["user_id"], m.ClientId)
 	isScopePresentAndEqual := consent != nil && consent.Scopes == m.Scope
-
-	fmt.Print(consent, isScopePresentAndEqual)
 
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
@@ -252,7 +249,7 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 
 			fieldString := "?fields=" + strings.Join(fieldsFiltered, ",")
 
-			req, err := http.NewRequest("GET", oidcBaseUrl+"users/id/"+codeData.UserId+fieldString, nil)
+			req, err := http.NewRequest("GET", oidcBaseUrl+"/users/id/"+codeData.UserId+fieldString, nil)
 			//req.Header.Set("Authorization", "Bearer internal")
 
 			if err != nil {

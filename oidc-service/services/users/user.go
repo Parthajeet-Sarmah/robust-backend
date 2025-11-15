@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -90,6 +91,21 @@ func (us *UserService) Login(userDetails custom_types.UserLoginDetails) (*http.C
 	}
 
 	return cookie, nil
+}
+
+func (us *UserService) Logout(userCookie *http.Cookie) error {
+	//remove redis session
+	sessionId := userCookie.Value
+	if err := utils.DeleteHashAll(us.RedisClient, "user_session:"+sessionId); err != nil {
+		var appError *custom_errors.AppError
+		if errors.As(err, &appError) && appError.Code == "REDIS_DELETE_ERROR" {
+			return custom_errors.UserLogoutError(appError.Cause)
+		}
+	}
+
+	fmt.Print("Success logout")
+
+	return nil
 }
 
 func (us *UserService) Register(details custom_types.UserRegistrationDetails) error {

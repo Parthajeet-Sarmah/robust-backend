@@ -3,12 +3,14 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
+	custom_errors "local/bomboclat-oidc-service/errors"
 	"local/bomboclat-oidc-service/services"
 	custom_types "local/bomboclat-oidc-service/types"
 )
@@ -69,6 +71,31 @@ func (userController UserController) Login(w http.ResponseWriter, r *http.Reques
 	// NOTE: Get base URL for the OAuth service
 	oauthBaseUrl := os.Getenv("OAUTH_BASE_URL")
 	http.Redirect(w, r, oauthBaseUrl+r.URL.Query().Get("next"), http.StatusFound)
+}
+
+func (controller UserController) Logout(w http.ResponseWriter, r *http.Request) {
+
+	userCookie, err := r.Cookie("session_id")
+
+	if err != nil {
+		appError := custom_errors.UserNotLoggedInError(err)
+		http.Error(w, appError.Error(), appError.HttpStatus)
+		return
+	}
+
+	err = services.UserService.Logout(userCookie)
+
+	if err != nil {
+		var appError *custom_errors.AppError
+		if errors.As(err, &appError) {
+			http.Error(w, appError.Error(), appError.HttpStatus)
+			return
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (controller UserController) Register(w http.ResponseWriter, r *http.Request) {

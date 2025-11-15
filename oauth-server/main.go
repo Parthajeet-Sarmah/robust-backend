@@ -138,5 +138,5 @@ func main() {
 	})
 
 	log.Println("Starting server on port 9000")
-	http.ListenAndServe(":9000", router)
+	http.ListenAndServe(":9000", middlewares.CORS(router))
 }

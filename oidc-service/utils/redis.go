@@ -43,6 +43,19 @@ func GetValueFromHash(c *redis.Client, hash string) (map[string]string, error) {
 	return res, nil
 }
 
+func DeleteHashAll(c *redis.Client, hash string) error {
+	ctx := context.Background()
+
+	_, err := c.Del(ctx, hash).Result()
+
+	if err != nil {
+		log.Print(err)
+		return custom_errors.RedisDeleteHashError(err)
+	}
+
+	return nil
+}
+
 func SetValueToHash(c *redis.Client, hash string, resource map[string]string, expiry ...time.Duration) error {
 	ctx := context.Background()
 

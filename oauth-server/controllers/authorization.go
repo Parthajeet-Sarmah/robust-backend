@@ -49,7 +49,7 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 		CodeChallengeMethod: codeChallengeMethod,
 	}
 
-	userCookie, _ := r.Cookie("session_id")
+	userCookie, err := r.Cookie("session_id")
 
 	callback_url, err := services.AuthorizationService.AuthorizeUserAndGenerateCode(authRequestModelInput, userCookie)
 
@@ -211,7 +211,7 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 				Scopes:   scope,
 			})
 			if err != nil {
-			log.Printf("Error saving consent: %v", err)
+				log.Printf("Error saving consent: %v", err)
 				// Continue anyway - session consent is set
 			}
 		}
@@ -237,7 +237,7 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 		ClientId:            r.FormValue("client_id"),
 		ClientSecretHash:    r.FormValue("client_secret_hash"),
 		CodeVerifier:        r.FormValue("code_verifier"),
-		CodeChallengeMethod: r.FormValue("codeChallenge_method"),
+		CodeChallengeMethod: r.FormValue("code_challenge_method"),
 		RefreshToken:        r.FormValue("refresh_token"),
 	}
 
@@ -254,8 +254,8 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 	if err != nil {
 		var appErr *custom_errors.AppError
 
-		if errors.As(err, &appErr) && appErr.Code == "REFRESH_TOKEN_NOT_FOUND" {
-			http.Error(w, appErr.Msg, appErr.HttpStatus)
+		if errors.As(err, &appErr) {
+			http.Error(w, appErr.Error(), appErr.HttpStatus)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

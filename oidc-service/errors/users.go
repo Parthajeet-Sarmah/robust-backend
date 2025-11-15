@@ -8,6 +8,9 @@ func UserAlreadyExistsError(cause error) *AppError {
 func UserNotFoundError(cause error) *AppError {
 	return New("USER_NOT_FOUND", "The user was not found", http.StatusNotFound, cause)
 }
+func UserLogoutError(cause error) *AppError {
+	return New("USER_NOT_LOGGED_OUT", "The user could not be logged out", http.StatusInternalServerError, cause)
+}
 func UserNotLoggedInError(cause error) *AppError {
 	return New("USER_NOT_LOGGED_IN", "The user was not logged in", http.StatusUnauthorized, cause)
 }

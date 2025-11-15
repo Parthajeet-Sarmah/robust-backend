@@ -19,8 +19,6 @@ func FindClientById(pg *custom_types.Postgres, ctx context.Context, client_id st
 		return nil, err
 	}
 
-	fmt.Println(client_id)
-
 	defer rows.Close()
 
 	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.ClientDatabaseModel])
