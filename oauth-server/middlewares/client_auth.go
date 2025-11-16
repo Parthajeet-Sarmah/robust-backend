@@ -3,14 +3,33 @@ package middlewares
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"local/bomboclat-oauth-server/database"
 	custom_errors "local/bomboclat-oauth-server/errors"
 	"local/bomboclat-oauth-server/utils"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
+
+func (ms *MiddlewareServiceContainer) AuthorizeInternal(r *http.Request) error {
+	auth := r.Header.Get("Authorization")
+	if !strings.HasPrefix(auth, "Bearer ") {
+		return custom_errors.Internal("An unexpected error occured!", errors.New("Invalid internal service token!"))
+	}
+
+	istString := strings.TrimPrefix(auth, "Bearer ")
+
+	ist := os.Getenv("INTERNAL_SERVICE_TOKEN")
+
+	if ist != istString {
+		return custom_errors.Internal("An unexpected error occured!", errors.New("Invalid internal service token!"))
+	}
+
+	return nil
+}
 
 func (ms *MiddlewareServiceContainer) AuthorizeClient(r *http.Request) (string, error) {
 	auth := r.Header.Get("Authorization")

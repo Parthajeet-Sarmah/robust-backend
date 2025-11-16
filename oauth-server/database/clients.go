@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"local/bomboclat-oauth-server/models"
 	custom_types "local/bomboclat-oauth-server/types"
 

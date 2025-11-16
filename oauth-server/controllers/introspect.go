@@ -13,10 +13,12 @@ type IntrospectController struct{}
 
 func (controller *IntrospectController) Introspect(w http.ResponseWriter, r *http.Request) {
 
-	_, err := middlewares.MiddlewareService.AuthorizeClient(r)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	// NOTE: Add a middleware for internal calls
+	if err := middlewares.MiddlewareService.AuthorizeInternal(r); err != nil {
+		if _, cErr := middlewares.MiddlewareService.AuthorizeClient(r); cErr != nil {
+			http.Error(w, cErr.Error(), http.StatusUnauthorized)
+			return
+		}
 	}
 
 	m := &custom_types.InstrospectModelInput{

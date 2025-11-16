@@ -2,10 +2,13 @@ package users
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -17,8 +20,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func (us *UserService) GetUserById(userId string, requiredFields string) (*custom_types.UserProfile, error) {
@@ -132,34 +133,65 @@ func (us *UserService) Register(details custom_types.UserRegistrationDetails) er
 	return nil
 }
 
-func (us *UserService) UserInfo(authToken string) (*custom_types.UserInfo, error) {
+func (us *UserService) UserInfo(accessToken string) (*custom_types.UserInfo, error) {
 
-	token, err := jwt.ParseWithClaims(authToken, &custom_types.CustomClaims{}, func(token *jwt.Token) (any, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
+	//Call introspection endpoint of OAuth and get info for token
+	client := http.Client{}
+	oauthBaseUrl := os.Getenv("OAUTH_BASE_URL")
+
+	form := url.Values{}
+	form.Set("token", accessToken)
+	form.Set("token_type_hint", "access_token")
+
+	req, err := http.NewRequest("POST", oauthBaseUrl+"/introspect/", strings.NewReader(form.Encode()))
+
+	fmt.Print(req)
 
 	if err != nil {
-		return nil, custom_errors.TokenParsingError(err)
+		return nil, custom_errors.Internal("An unexpected error occured!", errors.New("Introspect request url could not be formed!"))
 	}
 
-	if claims, ok := token.Claims.(*custom_types.CustomClaims); ok && token.Valid {
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("INTERNAL_SERVICE_TOKEN"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-		userUUID := claims.Subject
+	resp, err := client.Do(req)
 
-		user, err := database.FindUserByUUID(us.DBConn, context.Background(), userUUID, "")
-
-		userInfo := &custom_types.UserInfo{
-			Username: user.Username,
-			Email:    user.Email,
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		return userInfo, nil
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, custom_errors.Internal("Unknown error", nil)
+	fmt.Print("a", resp.StatusCode)
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Print("b")
+
+	var introspection custom_types.IntrospectionResponse
+	err = json.Unmarshal(body, &introspection)
+
+	if err != nil {
+		return nil, err
+	}
+	fmt.Print("c")
+	if !introspection.Active {
+		return nil, custom_errors.ExpiredAccessTokenError(nil)
+	}
+
+	userUUID := introspection.Sub
+
+	user, err := database.FindUserByUUID(us.DBConn, context.Background(), userUUID, "")
+
+	userInfo := &custom_types.UserInfo{
+		Username: user.Username,
+		Email:    user.Email,
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return userInfo, nil
 }

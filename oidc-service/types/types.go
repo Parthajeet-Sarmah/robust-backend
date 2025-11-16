@@ -6,6 +6,18 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+type IntrospectionResponse struct {
+	ClientID  string   `json:"client_id"`
+	Scope     string   `json:"scope"`
+	Active    bool     `json:"active"`
+	Sub       string   `json:"sub"`
+	Exp       int64    `json:"exp"`
+	Iat       int64    `json:"iat"`
+	Iss       string   `json:"iss"`
+	TokenType string   `json:"token_type"`
+	Aud       []string `json:"aud"`
+}
+
 type CustomClaims struct {
 	Issuer    string `json:"iss"`
 	Subject   string `json:"sub"`

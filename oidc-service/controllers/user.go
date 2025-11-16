@@ -3,7 +3,6 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -26,6 +25,7 @@ func (userController UserController) GetUserById(w http.ResponseWriter, r *http.
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -127,7 +127,13 @@ func (controller UserController) UserInfo(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	authToken := strings.Split(authHeader, " ")[1]
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		err := custom_errors.Internal("An unexpected error occured!", errors.New("Invalid internal service token!"))
+		http.Error(w, err.Error(), err.HttpStatus)
+		return
+	}
+
+	authToken := strings.TrimPrefix(authHeader, "Bearer ")
 
 	if authToken == "" {
 		http.Error(w, errors.New("No auth token").Error(), http.StatusUnauthorized)
