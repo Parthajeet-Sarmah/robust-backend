@@ -8,6 +8,9 @@ func ClientIdNonExistentError(cause error) *AppError {
 func ClientIdMismatchError(cause error) *AppError {
 	return New("CLIENT_ID_MISMATCH", "Client ID does not match", http.StatusForbidden, cause)
 }
+func RedirectURIProtocolMismatch(cause error) *AppError {
+	return New("REDIRECT_URI_PROTOCOL_MISMATCH", "Redirect URI does not have a valid HTTP protocol", http.StatusForbidden, cause)
+}
 func RedirectURIMismatchError(cause error) *AppError {
 	return New("REDIRECT_URI_MISMATCH", "Redirect URI does not match", http.StatusForbidden, cause)
 }
