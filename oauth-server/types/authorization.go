@@ -35,6 +35,8 @@ type TokenModelInput struct {
 	ClientId            string `json:"client_id"`
 	ClientSecretHash    string `json:"client_secret_hash"`
 	CodeVerifier        string `json:"code_verifier"`
+	ClientAssertionType string `json:"client_assertion_type"`
+	ClientAssertion     string `json:"client_assertion"`
 	CodeChallengeMethod string `json:"code_challenge_method"`
 	RefreshToken        string `json:"refresh_token"`
 }

@@ -245,8 +245,16 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 	_, err := middlewares.MiddlewareService.AuthorizeClient(r)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
+
+		// NOTE: Check for other authentication types (client_secret_post, private_key_jwt)
+		clientSecretPost := m != &custom_types.TokenModelInput{} && m.ClientSecretHash != ""
+		privateKeyJwt := m.ClientAssertionType != "" && m.ClientAssertion != ""
+		none := m.CodeVerifier != ""
+
+		if !clientSecretPost || !privateKeyJwt || !none {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
 	}
 
 	token, err := services.AuthorizationService.GenerateToken(m)
