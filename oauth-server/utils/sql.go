@@ -44,17 +44,39 @@ func CreateDBConnPool() (*custom_types.Postgres, error) {
 
 func CreateClientsTable(pg *custom_types.Postgres) error {
 	query := `CREATE TABLE IF NOT EXISTS clients (
-		client_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-		client_secret_hash TEXT,
-		redirect_uri TEXT,
-		app_name TEXT,
-		logo_url TEXT,
-		grant_types JSONB,
-		jwks_uri TEXT,
-		is_confidential BOOLEAN,
-		created_at TIMESTAMP DEFAULT now(),
-		updated_at TIMESTAMP DEFAULT now()
-	)`
+    client_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_secret_hash TEXT,
+    redirect_uri TEXT NOT NULL,
+    app_name TEXT NOT NULL,
+    logo_url TEXT,
+    grant_types JSONB NOT NULL,
+    token_endpoint_auth_method TEXT NOT NULL CHECK (
+        token_endpoint_auth_method IN (
+            'client_secret_basic',
+            'private_key_jwt'
+        )
+    ),
+    jwks TEXT,
+    jwks_uri TEXT,
+    is_confidential BOOLEAN NOT NULL,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now(),
+    CONSTRAINT client_secret_required CHECK (
+        (token_endpoint_auth_method = 'client_secret_basic' AND client_secret_hash IS NOT NULL)
+        OR
+        (token_endpoint_auth_method = 'private_key_jwt' AND client_secret_hash IS NULL)
+    ),
+    CONSTRAINT private_key_jwt_requires_jwk CHECK (
+        (token_endpoint_auth_method != 'private_key_jwt')
+        OR
+        (jwks IS NOT NULL OR jwks_uri IS NOT NULL)
+    ),
+    CONSTRAINT no_jwks_for_secret_basic CHECK (
+        (token_endpoint_auth_method != 'client_secret_basic')
+        OR
+        (jwks IS NULL AND jwks_uri IS NULL)
+    )
+	);`
 
 	_, err := pg.DB.Exec(context.Background(), query)
 

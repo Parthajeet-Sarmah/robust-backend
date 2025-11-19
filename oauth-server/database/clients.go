@@ -57,6 +57,8 @@ func InsertClient(pg *custom_types.Postgres, ctx context.Context, m *custom_type
 		app_name,
 		logo_url,
 		grant_types,
+		token_endpoint_auth_method,
+		jwks,
 		jwks_uri,
 		is_confidential
 	) VALUES (
@@ -65,22 +67,25 @@ func InsertClient(pg *custom_types.Postgres, ctx context.Context, m *custom_type
 		@appName,
 		@logoUrl,
 		@grantTypes,
+		@tokenEndpointAuthMethod,
+		@jwks,
 		@jwksUri,
 		@isConfidential
 	)`
 
 	args := pgx.NamedArgs{
-		"clientSecretHash": m.ClientSecretHash,
-		"redirectUri":      m.RedirectUri,
-		"appName":          m.AppName,
-		"logoUrl":          m.LogoUrl,
-		"grantTypes":       m.GrantTypes,
-		"jwksUri":          m.JwksUri,
-		"isConfidential":   m.IsConfidential,
+		"clientSecretHash":        m.ClientSecretHash,
+		"redirectUri":             m.RedirectUri,
+		"appName":                 m.AppName,
+		"logoUrl":                 m.LogoUrl,
+		"grantTypes":              m.GrantTypes,
+		"tokenEndpointAuthMethod": m.TokenEndpointAuthMethod,
+		"jwks":                    m.Jwks,
+		"jwksUri":                 m.JwksUri,
+		"isConfidential":          m.IsConfidential,
 	}
 
 	_, err := pg.DB.Exec(ctx, query, args)
-
 	if err != nil {
 		return err
 	}
