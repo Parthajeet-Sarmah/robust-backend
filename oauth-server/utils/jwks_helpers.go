@@ -4,9 +4,16 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"io"
+	custom_types "local/bomboclat-oauth-server/types"
+	"math/big"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -120,4 +127,102 @@ func FetchAndValidateJwks(ctx context.Context, uri string) error {
 	}
 
 	return ValidateJwksJSON(string(data))
+}
+
+func ConstructJWKSFromPublicKey(publicKey string) map[string][]custom_types.JWK {
+	// NOTE: Decode PEM to the original base64 encoding
+	block, _ := pem.Decode([]byte(publicKey))
+
+	if block == nil || block.Type != "PUBLIC KEY" {
+		return nil
+	}
+
+	// NOTE: Convert the key to into crypto.PublicKey
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil
+	}
+
+	// NOTE: Cast key to rsa.PublicKey
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		return nil
+	}
+
+	// NOTE: Get the modulus (N) and encode it to base64
+	n := base64.RawURLEncoding.EncodeToString(rsaPub.N.Bytes())
+
+	// NOTE: Get the exponent (E), convert it to big-endian order, and encode it to base64
+	eBytes := make([]byte, 0)
+	for e := rsaPub.E; e > 0; e >>= 8 {
+		eBytes = append([]byte{byte(e & 0xff)}, eBytes...)
+	}
+	e := base64.URLEncoding.EncodeToString(eBytes)
+
+	fjwk := custom_types.JWK{
+		Kty: "RSA",
+		Kid: os.Getenv("JWK_KEY_ID"),
+		N:   n,
+		E:   e,
+		Alg: "RSA256",
+		Use: "sig",
+	}
+
+	jwks := map[string][]custom_types.JWK{
+		"keys": []custom_types.JWK{fjwk},
+	}
+
+	return jwks
+}
+
+type JWKSet struct {
+	Keys []custom_types.JWK `json:"keys"`
+}
+
+func BuildRSAPublicKey(jwkJSON []byte, kid string) (*rsa.PublicKey, error) {
+	var set JWKSet
+	if err := json.Unmarshal(jwkJSON, &set); err != nil {
+		return nil, err
+	}
+
+	var key custom_types.JWK
+	found := false
+	for _, k := range set.Keys {
+		if k.Kid == kid {
+			key = k
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, errors.New("kid not found in JWK set")
+	}
+
+	if key.Kty != "RSA" {
+		return nil, errors.New("unsupported key type")
+	}
+
+	nb, err := base64.RawURLEncoding.DecodeString(key.N)
+	if err != nil {
+		return nil, err
+	}
+
+	eb, err := base64.RawURLEncoding.DecodeString(key.E)
+	if err != nil {
+		return nil, err
+	}
+
+	n := new(big.Int).SetBytes(nb)
+
+	e := new(big.Int).SetBytes(eb).Int64()
+	if e <= 0 {
+		return nil, errors.New("invalid RSA exponent")
+	}
+
+	pub := &rsa.PublicKey{
+		N: n,
+		E: int(e),
+	}
+
+	return pub, nil
 }

@@ -61,7 +61,7 @@ func (ms *MiddlewareServiceContainer) AuthorizeClient(r *http.Request) (string, 
 			return "", custom_errors.UnauthorizedClientError(nil)
 		}
 
-		id := *client.ClientId
+		id := client.ClientId
 		secret := *client.ClientSecretHash
 
 		data := map[string]string{

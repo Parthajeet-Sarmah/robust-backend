@@ -203,7 +203,6 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 			return
 		}
 
-		// If user allowed, persist consent to database
 		if decision == "allow" {
 			err = database.UpsertConsent(services.AuthorizationService.DBConn, &models.ConsentModel{
 				UserId:   userId,
@@ -212,7 +211,6 @@ func (controller *AuthorizationController) AuthorizeConsent(w http.ResponseWrite
 			})
 			if err != nil {
 				log.Printf("Error saving consent: %v", err)
-				// Continue anyway - session consent is set
 			}
 		}
 
@@ -238,11 +236,15 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 		ClientSecretHash:    r.FormValue("client_secret_hash"),
 		CodeVerifier:        r.FormValue("code_verifier"),
 		CodeChallengeMethod: r.FormValue("code_challenge_method"),
+		ClientAssertion:     r.FormValue("client_assertion"),
+		ClientAssertionType: r.FormValue("client_assertion_type"),
 		RefreshToken:        r.FormValue("refresh_token"),
 	}
 
 	// NOTE: Middleware to check if client is authorized (client_secret_basic)
 	_, err := middlewares.MiddlewareService.AuthorizeClient(r)
+
+	authMethod := "client_secret_basic"
 
 	if err != nil {
 
@@ -251,13 +253,25 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 		privateKeyJwt := m.ClientAssertionType != "" && m.ClientAssertion != ""
 		none := m.CodeVerifier != ""
 
-		if !clientSecretPost || !privateKeyJwt || !none {
+		hasOnlyOneMethod := (clientSecretPost && !privateKeyJwt && !none) ||
+			(!clientSecretPost && privateKeyJwt && !none) ||
+			(!clientSecretPost && !privateKeyJwt && none)
+
+		if !hasOnlyOneMethod {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
+
+		if clientSecretPost {
+			authMethod = "client_secret_post"
+		} else if privateKeyJwt {
+			authMethod = "private_key_jwt"
+		} else if none {
+			authMethod = "none"
+		}
 	}
 
-	token, err := services.AuthorizationService.GenerateToken(m)
+	token, err := services.AuthorizationService.GenerateToken(m, authMethod)
 
 	if err != nil {
 		var appErr *custom_errors.AppError

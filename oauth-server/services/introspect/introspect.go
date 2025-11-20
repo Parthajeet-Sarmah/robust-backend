@@ -23,25 +23,18 @@ func (as *IntrospectService) Introspect(m *custom_types.InstrospectModelInput) (
 
 		tokenData, err := database.IntrospectAccessToken(as.DBConn, tokenHash)
 
-		fmt.Print("1", tokenHash)
-
 		if err != nil {
 			return nil, err
 		}
 
-		fmt.Print("a")
-
 		if tokenData == nil {
 			return nil, custom_errors.NoAccessTokenFoundError(nil)
 		}
-		fmt.Print("d")
 		// NOTE: Get RSA public key
 		key, err := jwt.ParseRSAPublicKeyFromPEM([]byte(os.Getenv("JWT_RSA_PUBLIC_KEY")))
 		if err != nil {
 			return nil, err
 		}
-
-		fmt.Print("b")
 
 		token, err := jwt.ParseWithClaims(m.Token, &custom_types.CustomClaims{}, func(token *jwt.Token) (any, error) {
 			return key, nil
@@ -50,8 +43,6 @@ func (as *IntrospectService) Introspect(m *custom_types.InstrospectModelInput) (
 		if err != nil {
 			return nil, custom_errors.TokenParsingError(err)
 		}
-
-		fmt.Print("c")
 
 		if claims, ok := token.Claims.(*custom_types.CustomClaims); ok && token.Valid {
 

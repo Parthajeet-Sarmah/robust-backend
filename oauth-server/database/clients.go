@@ -8,14 +8,14 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func FindClientById(pg *custom_types.Postgres, ctx context.Context, client_id string) (*models.ClientDatabaseModel, error) {
+func FindClientById(pg *custom_types.Postgres, ctx context.Context, client_id string) (models.ClientDatabaseModel, error) {
 
 	query := `SELECT * FROM clients WHERE client_id = @clientId LIMIT 1`
 	args := pgx.NamedArgs{"clientId": client_id}
 	rows, err := pg.DB.Query(ctx, query, args)
 
 	if err != nil {
-		return nil, err
+		return models.ClientDatabaseModel{}, err
 	}
 
 	defer rows.Close()
@@ -23,10 +23,10 @@ func FindClientById(pg *custom_types.Postgres, ctx context.Context, client_id st
 	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.ClientDatabaseModel])
 
 	if err != nil {
-		return nil, err
+		return models.ClientDatabaseModel{}, err
 	}
 
-	return &data, nil
+	return data, nil
 }
 
 func FindClientByIdAndSecretHash(pg *custom_types.Postgres, ctx context.Context, clientId string, secretHash string) (*models.ClientDatabaseModel, error) {

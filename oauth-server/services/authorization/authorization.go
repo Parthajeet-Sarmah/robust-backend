@@ -61,12 +61,12 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 		return nil, err
 	}
 
-	if client == nil {
+	if client.RedirectUri == "" {
 		return nil, custom_errors.ClientNotFoundError(nil)
 	}
 
 	// TODO: Multiple URL check, open redirects, HTTPS check
-	if client.RedirectUri != nil && *client.RedirectUri != m.RedirectUri {
+	if client.RedirectUri != "" && client.RedirectUri != m.RedirectUri {
 		return nil, custom_errors.RedirectURIMismatchError(nil)
 	}
 
@@ -117,9 +117,9 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 	authCodeData := custom_types.AuthCodeModelInput{
 		Code:                authCode,
 		UserId:              res["user_id"],
-		ClientId:            *client.ClientId,
+		ClientId:            client.ClientId,
 		Scopes:              m.Scope,
-		RedirectUri:         *client.RedirectUri,
+		RedirectUri:         client.RedirectUri,
 		Used:                false,
 		CodeChallenge:       m.CodeChallenge,
 		CodeChallengeMethod: m.CodeChallengeMethod,
@@ -129,7 +129,7 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 		return nil, err
 	}
 
-	url := *client.RedirectUri + "?code=" + authCode + "&state=" + m.State
+	url := client.RedirectUri + "?code=" + authCode + "&state=" + m.State
 	return &url, nil
 }
 
@@ -175,26 +175,30 @@ func (as *AuthorizationService) AuthorizeConsent(m custom_types.AuthorizationCon
 	return errors.New("Wrong method")
 }
 
-func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (*custom_types.TokenResponse, error) {
+func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput, authMethod string) (*custom_types.TokenResponse, error) {
 
 	switch m.GrantType {
 	case "authorization_code":
 		//Validate the client with the respective ClientId
 		client, err := database.FindClientById(as.DBConn, context.Background(), m.ClientId)
 
+		if authMethod != client.TokenEndpointAuthMethod {
+			return nil, custom_errors.TokenEndpointAuthMethodMismatch(nil)
+		}
+
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, custom_errors.ClientNotFoundError(err)
 			}
-			// TODO: Better errors here!
+			// TODO: Better errors here???
 			return nil, custom_errors.ClientNotFoundError(err)
 		}
 
-		if client == nil {
+		if client.RedirectUri == "" {
 			return nil, custom_errors.ClientNotFoundError(nil)
 		}
 
-		if client.RedirectUri != nil && *client.RedirectUri != m.RedirectUri {
+		if client.RedirectUri != "" && client.RedirectUri != m.RedirectUri {
 			log.Print("Redirect URI for the client does not match!")
 			return nil, custom_errors.RedirectURIMismatchError(nil)
 		}
@@ -226,6 +230,33 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput) (
 
 		if codeChallenge != codeData.CodeChallenge {
 			return nil, custom_errors.CodeChallengeDoesNotMatchError(nil)
+		}
+
+		// NOTE: Do checks necessary for provided token_endpoint_auth_method
+		if client.TokenEndpointAuthMethod == "private_key_jwt" {
+			// NOTE: Break down JWT, get public key from client
+			key, err := utils.BuildRSAPublicKey([]byte(*client.Jwks), "test-key-001")
+
+			if err != nil {
+				return nil, err
+			}
+
+			token, err := jwt.ParseWithClaims(m.ClientAssertion, &custom_types.CustomClaims{}, func(token *jwt.Token) (any, error) {
+				return key, nil
+			})
+
+			// NOTE: Validate JWT claims
+			if claims, ok := token.Claims.(*custom_types.CustomClaims); ok && token.Valid {
+				iss := claims.Issuer
+				sub := claims.Subject
+				//aud := claims.Audience
+				jti := claims.ID
+				exp := claims.ExpiresAt
+
+				if iss != client.ClientId || sub != client.ClientId || jti == "0" || exp == 0 {
+					return nil, custom_errors.TokenParsingError(nil)
+				}
+			}
 		}
 
 		var idToken string

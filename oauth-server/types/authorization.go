@@ -33,12 +33,12 @@ type TokenModelInput struct {
 	Code                string `json:"code"`
 	RedirectUri         string `json:"redirect_uri"`
 	ClientId            string `json:"client_id"`
-	ClientSecretHash    string `json:"client_secret_hash"`
+	ClientSecretHash    string `json:"client_secret_hash,omitempty"`
 	CodeVerifier        string `json:"code_verifier"`
-	ClientAssertionType string `json:"client_assertion_type"`
-	ClientAssertion     string `json:"client_assertion"`
-	CodeChallengeMethod string `json:"code_challenge_method"`
-	RefreshToken        string `json:"refresh_token"`
+	ClientAssertionType string `json:"client_assertion_type,omitempty"`
+	ClientAssertion     string `json:"client_assertion,omitempty"`
+	CodeChallengeMethod string `json:"code_challenge_method,omitempty"`
+	RefreshToken        string `json:"refresh_token,omitempty"`
 }
 
 type TokenResponse struct {

@@ -8,7 +8,9 @@ func ClientIdNonExistentError(cause error) *AppError {
 func InvalidClientMetadata(cause error) *AppError {
 	return New("INVALID_CLIENT_METADATA", "The provided client metadata is invalid", http.StatusBadRequest, cause)
 }
-
+func TokenEndpointAuthMethodMismatch(cause error) *AppError {
+	return New("AUTH_ENDPOINT_MISMATCH", "The auth endpoint method does not match!", http.StatusUnauthorized, cause)
+}
 func InvalidRedirectURI(cause error) *AppError {
 	return New("INVALID_REDIRECT_URI", "The provided redirect URI is invalid", http.StatusBadRequest, cause)
 }

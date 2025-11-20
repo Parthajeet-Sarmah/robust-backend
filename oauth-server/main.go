@@ -1,16 +1,14 @@
 package main
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 
 	database "local/bomboclat-oauth-server/database"
+	custom_errors "local/bomboclat-oauth-server/errors"
 	"local/bomboclat-oauth-server/middlewares"
 	"local/bomboclat-oauth-server/routers"
 	"local/bomboclat-oauth-server/services"
@@ -58,46 +56,11 @@ func main() {
 	router.HandleFunc("GET /.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
 		publicKey := os.Getenv("JWT_RSA_PUBLIC_KEY")
 
-		// NOTE: Decode PEM to the original base64 encoding
-		block, _ := pem.Decode([]byte(publicKey))
+		jwks := utils.ConstructJWKSFromPublicKey(publicKey)
 
-		if block == nil || block.Type != "PUBLIC KEY" {
-			return
-		}
-
-		// NOTE: Convert the key to into crypto.PublicKey
-		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-		if err != nil {
-			return
-		}
-
-		// NOTE: Cast key to rsa.PublicKey
-		rsaPub, ok := pub.(*rsa.PublicKey)
-		if !ok {
-			return
-		}
-
-		// NOTE: Get the modulus (N) and encode it to base64
-		n := base64.RawURLEncoding.EncodeToString(rsaPub.N.Bytes())
-
-		// NOTE: Get the exponent (E), convert it to big-endian order, and encode it to base64
-		eBytes := make([]byte, 0)
-		for e := rsaPub.E; e > 0; e >>= 8 {
-			eBytes = append([]byte{byte(e & 0xff)}, eBytes...)
-		}
-		e := base64.URLEncoding.EncodeToString(eBytes)
-
-		jwk := custom_types.JWK{
-			Kty: "RSA",
-			Kid: os.Getenv("JWK_KEY_ID"),
-			N:   n,
-			E:   e,
-			Alg: "RSA256",
-			Use: "sig",
-		}
-
-		jwks := map[string][]custom_types.JWK{
-			"keys": []custom_types.JWK{jwk},
+		if jwks == nil {
+			cerr := custom_errors.Internal("An unexpected error occured", errors.New("JWKs is empty"))
+			http.Error(w, cerr.Error(), cerr.HttpStatus)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
