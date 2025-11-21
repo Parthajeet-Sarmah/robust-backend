@@ -251,22 +251,20 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 		// NOTE: Check for other authentication types (client_secret_post, private_key_jwt)
 		clientSecretPost := m != &custom_types.TokenModelInput{} && m.ClientSecretHash != ""
 		privateKeyJwt := m.ClientAssertionType != "" && m.ClientAssertion != ""
-		none := m.CodeVerifier != ""
 
-		hasOnlyOneMethod := (clientSecretPost && !privateKeyJwt && !none) ||
-			(!clientSecretPost && privateKeyJwt && !none) ||
-			(!clientSecretPost && !privateKeyJwt && none)
+		hasOnlyOneMethod := clientSecretPost != privateKeyJwt
 
-		if !hasOnlyOneMethod {
+		if !hasOnlyOneMethod && !clientSecretPost {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
 
-		if clientSecretPost {
-			authMethod = "client_secret_post"
-		} else if privateKeyJwt {
+		// NOTE: Strongest to weakest auth methods
+		if privateKeyJwt {
 			authMethod = "private_key_jwt"
-		} else if none {
+		} else if clientSecretPost {
+			authMethod = "client_secret_post"
+		} else {
 			authMethod = "none"
 		}
 	}

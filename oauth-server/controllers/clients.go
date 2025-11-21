@@ -56,7 +56,7 @@ func (controller ClientController) Register(w http.ResponseWriter, r *http.Reque
 
 	if m.TokenEndpointAuthMethod == "private_key_jwt" {
 
-		m.ClientSecretHash = nil
+		m.ClientSecret = ""
 
 		if m.Jwks == "" && m.JwksUri == "" {
 			cerr := custom_errors.InvalidClientMetadata(nil)

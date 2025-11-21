@@ -180,11 +180,8 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput, a
 	switch m.GrantType {
 	case "authorization_code":
 		//Validate the client with the respective ClientId
+		fmt.Print(m.ClientId)
 		client, err := database.FindClientById(as.DBConn, context.Background(), m.ClientId)
-
-		if authMethod != client.TokenEndpointAuthMethod {
-			return nil, custom_errors.TokenEndpointAuthMethodMismatch(nil)
-		}
 
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -192,6 +189,10 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput, a
 			}
 			// TODO: Better errors here???
 			return nil, custom_errors.ClientNotFoundError(err)
+		}
+
+		if authMethod != client.TokenEndpointAuthMethod {
+			return nil, custom_errors.TokenEndpointAuthMethodMismatch(nil)
 		}
 
 		if client.RedirectUri == "" {
@@ -253,7 +254,17 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput, a
 				jti := claims.ID
 				exp := claims.ExpiresAt
 
+				m := map[string]any{
+					"iss": iss,
+					"sub": sub,
+					"jti": jti,
+					"exp": exp,
+				}
+
+				fmt.Print(m)
+
 				if iss != client.ClientId || sub != client.ClientId || jti == "0" || exp == 0 {
+
 					return nil, custom_errors.TokenParsingError(nil)
 				}
 			}

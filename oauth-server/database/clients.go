@@ -4,6 +4,7 @@ import (
 	"context"
 	"local/bomboclat-oauth-server/models"
 	custom_types "local/bomboclat-oauth-server/types"
+	"local/bomboclat-oauth-server/utils"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -74,7 +75,7 @@ func InsertClient(pg *custom_types.Postgres, ctx context.Context, m *custom_type
 	)`
 
 	args := pgx.NamedArgs{
-		"clientSecretHash":        m.ClientSecretHash,
+		"clientSecretHash":        utils.HashToken256(m.ClientSecret),
 		"redirectUri":             m.RedirectUri,
 		"appName":                 m.AppName,
 		"logoUrl":                 m.LogoUrl,

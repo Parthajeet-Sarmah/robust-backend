@@ -3,7 +3,7 @@ package custom_types
 // TODO: Add multiple redirect uri support
 
 type ClientDatabaseModelInput struct {
-	ClientSecretHash        *string  `json:"client_secret_hash,omitempty"`
+	ClientSecret            string   `json:"client_secret,omitempty"`
 	RedirectUri             string   `json:"redirect_uri"`
 	AppName                 string   `json:"app_name"`
 	GrantTypes              []string `json:"grant_types"`
