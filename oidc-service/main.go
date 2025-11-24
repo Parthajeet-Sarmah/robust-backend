@@ -1,8 +1,10 @@
 package main
 
 import (
+	"html/template"
 	"log"
 	"net/http"
+	"os"
 
 	database "local/bomboclat-oidc-service/database"
 	"local/bomboclat-oidc-service/routers"
@@ -37,6 +39,18 @@ func main() {
 
 	router := http.NewServeMux()
 
+	router.HandleFunc("/login-status", func(w http.ResponseWriter, r *http.Request) {
+		wd, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		tmpl := template.Must(template.ParseFiles(wd + "/templates/login-status.html"))
+
+		if r.Method == http.MethodPost {
+			tmpl.Execute(w, nil)
+		}
+	})
 	router.Handle("/users/", http.StripPrefix("/users", userRouter))
 
 	log.Println("Starting server on port 9030")

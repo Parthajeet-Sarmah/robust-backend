@@ -89,6 +89,7 @@ func main() {
 			SubjectTypesSupported:             []string{"public"},
 			IdTokenSigningAlgValuesSupported:  []string{"RS256"},
 			TokenEndpointAuthMethodsSupported: []string{"client_secret_basic"},
+			CheckSessionIframe:                os.Getenv("OIDC_BASE_URL") + "/login-status.html",
 		}
 
 		w.Header().Set("Content-Type", "application/json")

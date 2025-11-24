@@ -26,6 +26,7 @@ type OpenIdConfiguration struct {
 	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
 	SubjectTypesSupported             []string `json:"subject_types_supported"`
 	IdTokenSigningAlgValuesSupported  []string `json:"id_token_signing_alg_values_supported"`
+	CheckSessionIframe                string   `json:"check_session_iframe"`
 }
 
 type TokenModelInput struct {
