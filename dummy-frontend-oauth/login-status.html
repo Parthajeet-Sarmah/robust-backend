@@ -1,0 +1,40 @@
+<script>
+
+  const CLIENT_ID = "2302be9f-4588-464d-a1d7-eab6a54568d5";
+  const SESSION_STATE = localStorage.getItem("session_state");
+
+  var stat = "unchanged";
+  var mes = CLIENT_ID + " " + SESSION_STATE;
+  var targetOrigin = "http://localhost:9030"; // Validates origin
+  var opFrameId = "op";
+  var timerID;
+
+  function check_session() {
+    var win = window.parent.frames[opFrameId].contentWindow
+    win.postMessage(mes, targetOrigin);
+  }
+
+  function setTimer() {
+    check_session();
+    timerID = setInterval(check_session, 5 * 1000);
+  }
+
+  window.addEventListener("message", receiveMessage, false);
+
+  function receiveMessage(e) {
+
+    console.log("Message received!")
+
+    if (e.origin !== targetOrigin) {
+      return;
+    }
+    stat = e.data;
+
+    if (stat === "changed") {
+      clearInterval(timerID);
+      // then take the actions below...
+    }
+  }
+
+  setTimer();
+</script>

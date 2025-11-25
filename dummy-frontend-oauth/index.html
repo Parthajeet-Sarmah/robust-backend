@@ -128,6 +128,12 @@
     <div class="success error" id="errorMsg">❌ Login failed or canceled.</div>
   </div>
 
+  <!-- Iframes for RP and OP -->
+  <iframe style="position: absolute;width:0;height:0;border:0;" id="rp" src="login-status.html"
+    frameborder="0"></iframe>
+  <iframe style="position: absolute;width:0;height:0;border:0;" id="op" src="http://localhost:9030/sessions/check"
+    frameborder="0"></iframe>
+
   <script>
     async function hashToken256(token) {
       const data = new TextEncoder().encode(token);

@@ -1,4 +1,5 @@
 <html>
+
 <script>
 
   async function hashToken256(token) {
@@ -20,7 +21,7 @@
       method: "GET"
     });
 
-    var ss = (await hashToken256(client_id + " " + e.origin + " " + opuas + " " + salt)) + "." + salt;
+    var ss = (await hashToken256(client_id + ' ' + e.origin + ' ' + opuas + ' ' + salt)) + '.' + salt;
 
     var stat = ''
     if (session_state === ss) {
@@ -28,7 +29,7 @@
     } else stat = 'changed';
 
     e.source.postMessage(stat, e.origin);
-
   });
 </script>
+
 </html>

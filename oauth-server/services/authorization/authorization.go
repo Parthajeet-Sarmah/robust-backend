@@ -342,7 +342,6 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput, a
 			}
 
 			idToken = tokenString
-
 		}
 
 		expiresAt := time.Now().UTC().Add(10 * time.Minute) // 10 minutes

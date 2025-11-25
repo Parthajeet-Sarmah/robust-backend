@@ -82,6 +82,19 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 		return
 	}
 
+	opuasCookie, err := r.Cookie("opuas")
+
+	if err != nil {
+		cerr := custom_errors.Internal("No valid cookie", nil)
+		http.Error(w, cerr.Error(), cerr.HttpStatus)
+	}
+
+	opuas := opuasCookie.Value
+
+	if callback_url != nil {
+		*callback_url += "&session_state=" + opuas
+	}
+
 	http.Redirect(w, r, *callback_url, http.StatusFound)
 }
 

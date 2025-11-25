@@ -36,6 +36,7 @@ func main() {
 
 	//Sub routes
 	userRouter := routers.UserHandler().RegisterRoutes()
+	sessionsRouter := routers.SessionHandler().RegisterRoutes()
 
 	router := http.NewServeMux()
 
@@ -51,6 +52,8 @@ func main() {
 			tmpl.Execute(w, nil)
 		}
 	})
+
+	router.Handle("/sessions/", http.StripPrefix("/sessions", sessionsRouter))
 	router.Handle("/users/", http.StripPrefix("/users", userRouter))
 
 	log.Println("Starting server on port 9030")

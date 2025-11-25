@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"html/template"
@@ -61,7 +63,28 @@ func (userController UserController) Login(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	randomBytes := make([]byte, 128)
+
+	if _, err := rand.Read(randomBytes); err != nil {
+		log.Print("Error while reading random bytes for generating code!")
+		panic(err)
+	}
+
+	opuasValue := hex.EncodeToString(randomBytes)
+
+	//user agent state cookie
+	opuas := &http.Cookie{
+		Name:     "opuas",
+		Value:    opuasValue,
+		Domain:   "localhost",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+	}
+
 	http.SetCookie(w, cookie)
+	http.SetCookie(w, opuas)
 
 	next := r.FormValue("next")
 	if next == "" {
