@@ -78,7 +78,6 @@ func (userController UserController) Login(w http.ResponseWriter, r *http.Reques
 		Value:    opuasValue,
 		Domain:   "localhost",
 		Path:     "/",
-		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
 	}

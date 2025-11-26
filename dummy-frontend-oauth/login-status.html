@@ -1,6 +1,6 @@
 <script>
 
-  const CLIENT_ID = "2302be9f-4588-464d-a1d7-eab6a54568d5";
+  const CLIENT_ID = "56f6e95e-d1d5-40e9-b2bf-b50e9262abd7";
   const SESSION_STATE = localStorage.getItem("session_state");
 
   var stat = "unchanged";
@@ -26,11 +26,13 @@
     console.log("Message received!")
 
     if (e.origin !== targetOrigin) {
+      console.log("origin mismatch")
       return;
     }
     stat = e.data;
 
     if (stat === "changed") {
+      console.log("data changed")
       clearInterval(timerID);
       // then take the actions below...
     }

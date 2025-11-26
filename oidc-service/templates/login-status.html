@@ -12,18 +12,27 @@
     return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
 
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
   window.addEventListener("message", async (e) => {
     var client_id = e.data.substr(0, e.data.lastIndexOf(' '));
-    var session_state = e.data.substr(e.data.lastIndexOf() + 1);
+    var session_state = e.data.substr(e.data.lastIndexOf(' ') + 1);
     var salt = session_state.split('.')[1];
 
-    var opuas = await fetch("/sessions/check", {
-      method: "GET"
-    });
+    var opuas = getCookie("opuas")
 
     var ss = (await hashToken256(client_id + ' ' + e.origin + ' ' + opuas + ' ' + salt)) + '.' + salt;
 
     var stat = ''
+
+    console.log(e.data)
+    console.log(ss)
+
     if (session_state === ss) {
       stat = 'unchanged';
     } else stat = 'changed';

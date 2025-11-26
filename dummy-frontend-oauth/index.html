@@ -128,12 +128,6 @@
     <div class="success error" id="errorMsg">❌ Login failed or canceled.</div>
   </div>
 
-  <!-- Iframes for RP and OP -->
-  <iframe style="position: absolute;width:0;height:0;border:0;" id="rp" src="login-status.html"
-    frameborder="0"></iframe>
-  <iframe style="position: absolute;width:0;height:0;border:0;" id="op" src="http://localhost:9030/sessions/check"
-    frameborder="0"></iframe>
-
   <script>
     async function hashToken256(token) {
       const data = new TextEncoder().encode(token);
@@ -156,11 +150,11 @@
     const OIDC_END_SESSION_ENDPOINT = "http://localhost:9030/users/logout";
     const POST_LOGOUT_REDIRECT_URI = "http://localhost:5500/logged-out.html";
 
-    const CLIENT_ID = "2302be9f-4588-464d-a1d7-eab6a54568d5";
-    const CLIENT_SECRET_HASH = "";
+    const CLIENT_ID = "56f6e95e-d1d5-40e9-b2bf-b50e9262abd7";
+    const CLIENT_SECRET = "password";
     const CODE_VERIFIER = "localhost";
     const CODE_CHALLENGE_METHOD = "S256";
-    const REDIRECT_URI = "https://example.com/callback";
+    const REDIRECT_URI = "http://localhost:5500/oauth/callback.html";
     const SCOPE = "openid profile email";
 
 
@@ -181,6 +175,7 @@
 
       const authUrl =
         `http://localhost:9000/authorize?client_id=${CLIENT_ID}`
+        + `&client_secret=${CLIENT_SECRET}`
         + `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
         + `&scope=${encodeURIComponent(SCOPE)}`
         + `&random_state=${state}`
@@ -197,7 +192,7 @@
         if (event.origin !== window.location.origin) return;
 
         if (event.data.type === "bomboclat-auth-success") {
-          const {code, state: returnedState, id_token} = event.data;
+          const {code, state: returnedState, id_token, session_state} = event.data;
 
           if (returnedState !== state) {
             errorMsg.textContent = "⚠️ State mismatch — possible CSRF.";
@@ -205,9 +200,11 @@
             return;
           }
 
+          localStorage.setItem("session_state", session_state)
+
           const params = new URLSearchParams();
           params.append("client_id", CLIENT_ID);
-          params.append("client_secret_hash", CLIENT_SECRET_HASH);
+          params.append("client_secret", CLIENT_SECRET);
           params.append("code_verifier", CODE_VERIFIER);
           params.append("code_challenge_method", CODE_CHALLENGE_METHOD);
           params.append("code", code);
@@ -232,6 +229,12 @@
 
               successMsg.classList.add("visible");
               logoutButton.style.display = "inline-block";
+
+              //Add iframes
+              document.body.innerHTML += `<iframe style="position: absolute;width:0;height:0;border:0;" id="rp" src="login-status.html"
+    frameborder="0"></iframe>
+  <iframe style="position: absolute;width:0;height:0;border:0;" id="op" src="http://localhost:9030/sessions/check"
+    frameborder="0"></iframe>`
 
               if (popup) popup.close();
             })

@@ -87,6 +87,7 @@ func (us *UserService) Login(userDetails custom_types.UserLoginDetails) (*http.C
 		Value:    sessionID,
 		Path:     "/",
 		HttpOnly: true,
+		Expires:  time.Now().Add(time.Minute * 5),
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	}

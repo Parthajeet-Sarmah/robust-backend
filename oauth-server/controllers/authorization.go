@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -91,8 +93,21 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 
 	opuas := opuasCookie.Value
 
+	randomBytes := make([]byte, 64)
+
+	if _, err := rand.Read(randomBytes); err != nil {
+		log.Print("Error while reading random bytes for generating code!")
+		panic(err)
+	}
+
+	salt := hex.EncodeToString(randomBytes)
+
+	session_state := utils.HashToken256(client_id+" "+r.Referer()[:len(r.Referer())-1]+" "+opuas+" "+salt) + "." + salt
+
+	fmt.Print(session_state)
+
 	if callback_url != nil {
-		*callback_url += "&session_state=" + opuas
+		*callback_url += "&session_state=" + session_state
 	}
 
 	http.Redirect(w, r, *callback_url, http.StatusFound)
@@ -246,7 +261,7 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 		Code:                r.FormValue("code"),
 		RedirectUri:         r.FormValue("redirect_uri"),
 		ClientId:            r.FormValue("client_id"),
-		ClientSecretHash:    r.FormValue("client_secret_hash"),
+		ClientSecretHash:    utils.HashToken256(r.FormValue("client_secret")),
 		CodeVerifier:        r.FormValue("code_verifier"),
 		CodeChallengeMethod: r.FormValue("code_challenge_method"),
 		ClientAssertion:     r.FormValue("client_assertion"),
@@ -254,32 +269,27 @@ func (controller *AuthorizationController) GenerateToken(w http.ResponseWriter, 
 		RefreshToken:        r.FormValue("refresh_token"),
 	}
 
-	// NOTE: Middleware to check if client is authorized (client_secret_basic)
-	_, err := middlewares.MiddlewareService.AuthorizeClient(r)
+	var authMethod string
 
-	authMethod := "client_secret_basic"
+	// NOTE: Check for other authentication types (client_secret_post, private_key_jwt)
+	clientSecretPost := m != &custom_types.TokenModelInput{} && m.ClientSecretHash != ""
+	privateKeyJwt := m.ClientAssertionType != "" && m.ClientAssertion != ""
 
-	if err != nil {
+	// NOTE: Strongest to weakest auth methods
+	if privateKeyJwt {
+		authMethod = "private_key_jwt"
+	} else if clientSecretPost {
+		authMethod = "client_secret_post"
+	} else {
+		// NOTE: Middleware to check if client is authorized (client_secret_basic)
+		_, err := middlewares.MiddlewareService.AuthorizeClient(r)
 
-		// NOTE: Check for other authentication types (client_secret_post, private_key_jwt)
-		clientSecretPost := m != &custom_types.TokenModelInput{} && m.ClientSecretHash != ""
-		privateKeyJwt := m.ClientAssertionType != "" && m.ClientAssertion != ""
-
-		hasOnlyOneMethod := clientSecretPost != privateKeyJwt
-
-		if !hasOnlyOneMethod && !clientSecretPost {
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
 
-		// NOTE: Strongest to weakest auth methods
-		if privateKeyJwt {
-			authMethod = "private_key_jwt"
-		} else if clientSecretPost {
-			authMethod = "client_secret_post"
-		} else {
-			authMethod = "none"
-		}
+		authMethod = "client_secret_basic"
 	}
 
 	token, err := services.AuthorizationService.GenerateToken(m, authMethod)
