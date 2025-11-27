@@ -29,7 +29,7 @@ Security posture is generally strong for the supported flows (mandatory PKCE, RS
 | **OAuth 2.1 (Draft)** | Good (~80%) | Support for broader auth methods, more complete state/parameter validation, clearer distinction of public vs confidential clients | 2.1-aligned design: only authorization code flow, PKCE effectively mandatory, no implicit grant, HTTPS enforced for redirect URIs in production, secure cookies (HttpOnly, Secure, SameSite=Lax). |
 | **OIDC Core** | Partial (~55%) | Hybrid/implicit flows, `nonce`, `prompt`, `max_age`, `auth_time`, `acr`, `amr`, `at_hash`/`c_hash`, richer claims handling, `sub` in UserInfo | Code flow with `openid` scope produces RS256 ID Tokens and a working `/userinfo` endpoint. ID Token claims are minimal (iss/sub/aud/exp/iat + email/name). UserInfo response is basic and lacks some required claims. |
 | **OIDC Discovery** | Good (~75%) | Many optional metadata fields (e.g. `end_session_endpoint`, `response_modes_supported`, `claims_supported`, extra algs) | `/.well-known/openid-configuration` returns issuer, auth/token/userinfo endpoints, JWKS URL, introspection, revocation, registration, scopes, response_types, grant_types, subject_types, token endpoint auth methods, ID Token signing algs. |
-| **OIDC Session Management** | Partial (~35%) | OIDC-compliant logout (`end_session_endpoint`), session state, front-/back-channel logout, `sid` handling | Cookie-based login (`/users/login`) and logout (`/users/logout`) with Redis-backed sessions, but no OIDC session management endpoints or semantics; no `end_session_endpoint` in discovery; no coordination with ID Token or post-logout redirect URIs. |
+| **OIDC Session Management** | Partial (~40%) | OIDC-compliant logout (`end_session_endpoint`), session state, front-/back-channel logout, `sid` handling | Cookie-based login (`/users/login`) and logout (`/users/logout`) with Redis-backed sessions, plus a basic `check_session_iframe` in discovery and `/sessions/check` + `/sessions/end_session` routes; however `EndSession` is currently a stub and overall behavior is still not OIDC-compliant (no post-logout redirect URIs or RP coordination). |
 | **PKCE (RFC 7636)** | Excellent (~90–95%) | `plain` code challenge method, more explicit error semantics for invalid `code_challenge_method` | Authorization endpoint requires `code_challenge` and `code_challenge_method`; auth codes store challenge + method; token endpoint recomputes S256 hash and enforces match. Only S256 is supported; `plain` is rejected (stricter than spec, aligned with best practice). |
 | **Token Introspection (RFC 7662)** | Good (~80%) | Full error handling, more complete metadata, consistent behavior for unknown tokens without leaking details | `/introspect/` supports access and refresh tokens via `token` + `token_type_hint` in `application/x-www-form-urlencoded`. Authorizes either via internal bearer token or client Basic auth. For access tokens, validates JWT signature and DB state; returns `active`, `client_id`, `scope`, `sub`, `exp`, `iat`, `iss`, `aud`, `token_type`. |
 | **Token Revocation (RFC 7009)** | Partial (~60–70%) | Revocation of refresh tokens, client ownership checks, more precise auth requirements, support beyond `token_type_hint=access_token` | `/authorize/revoke` accepts `token` and `token_type_hint`, but only handles `access_token` and marks DB rows as revoked. No client authentication or ownership verification and no support for refresh token revocation. |
@@ -120,7 +120,8 @@ Security posture is generally strong for the supported flows (mandatory PKCE, RS
     - `grant_types_supported` (`authorization_code`, `refresh_token`)  
     - `subject_types_supported` (`public`)  
     - `id_token_signing_alg_values_supported` (`RS256`)  
-    - `token_endpoint_auth_methods_supported` (`client_secret_basic`)
+    - `token_endpoint_auth_methods_supported` (`client_secret_basic`)  
+    - `check_session_iframe` (points to the OP iframe served by `oidc-service`)
 
 ## 4. OIDC Service (oidc-service)
 
@@ -160,6 +161,22 @@ The `oidc-service` provides user authentication and profile data to the authoriz
     - Used by `oauth-server` to build ID Token claims when `openid` scope is present  
     - Supports `fields` query parameter (`profile`, `email`) to shape the response
 
+- **Session Check / OP Iframe**  
+  - Routes: `GET /login-status`, `GET /sessions/check`  
+  - Handler: `SessionController.CheckSession` (plus a minimal inline handler in `main.go`)  
+  - Features:  
+    - Serves `templates/login-status.html` as a lightweight OP iframe  
+    - Exposed via the `check_session_iframe` field in `/.well-known/openid-configuration`  
+    - Currently only renders HTML; no JavaScript-based session state checks or token binding logic yet
+
+- **User Registration**  
+  - Route: `POST /users/register`  
+  - Handler: `UserController.Register` / `UserService.Register`  
+  - Features:  
+    - Accepts basic form fields (`email`, `password`, `username`, `profilePic`)  
+    - Persists a new user record in the OIDC user database  
+    - Does not yet implement any OIDC-standardized registration flows
+
 ## 5. Key Gaps and Suggested Next Steps
 
 1. **OIDC Core Features**  
@@ -167,7 +184,7 @@ The `oidc-service` provides user authentication and profile data to the authoriz
    - Ensure ID Tokens and UserInfo responses include required claims (`sub`, consistent `iss`, etc.).
 
 2. **Session Management / Logout**  
-   - Introduce an OIDC-compliant logout endpoint (e.g. `end_session_endpoint`) and expose it in discovery.  
+   - Finish implementing an OIDC-compliant logout endpoint (e.g. `end_session_endpoint`) and expose it in discovery alongside the existing session routes.  
    - Consider front-channel or back-channel logout for relying parties.
 
 3. **Revocation Coverage**  
@@ -180,5 +197,11 @@ The `oidc-service` provides user authentication and profile data to the authoriz
 5. **JWKS / Key Management**  
    - Correct the `alg` field to `RS256`.  
    - Plan for key rotation and multiple keys in the JWKS set.
+
+## 6. Repository Layout & Additional Components
+
+- `oauth-server/` – Core OAuth 2.0 / OIDC authorization server described above (HTTP server on port 9000).  
+- `oidc-service/` – User identity provider backing login, logout, UserInfo, ID Token profile lookup, and the OP iframe / session endpoints (HTTP server on port 9030).  
+- `microservices/auth/` – Experimental gRPC-based auth microservice. Currently starts a gRPC server on `:9000` and contains stubbed user methods (`Login`, `ForgotPassword`, `Register`); no business logic or integration with the OAuth/OIDC flows is wired yet.
 
 As features evolve, this document should be updated to keep the compliance summary and endpoint mapping in sync with the implementation.

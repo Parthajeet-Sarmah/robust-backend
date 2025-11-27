@@ -102,10 +102,17 @@ func (controller AuthorizationController) AuthorizeUserAndGenerateCode(w http.Re
 
 	salt := hex.EncodeToString(randomBytes)
 
-	session_state := utils.HashToken256(client_id+" "+r.Referer()[:len(r.Referer())-1]+" "+opuas+" "+salt) + "." + salt
+	url, err := url.Parse(redirect_uri)
 
-	fmt.Print(session_state)
+	if err != nil {
+		cerr := custom_errors.Internal("Redirect URI could not be parsed", nil)
+		http.Error(w, cerr.Error(), cerr.HttpStatus)
+	}
 
+	origin := url.Scheme + "://" + url.Host
+
+	session_state := utils.HashToken256(client_id+" "+origin+" "+opuas+" "+salt) + "." + salt
+	fmt.Print(client_id + " /// " + origin + " /// " + opuas + " /// " + salt + "\n\n\n")
 	if callback_url != nil {
 		*callback_url += "&session_state=" + session_state
 	}

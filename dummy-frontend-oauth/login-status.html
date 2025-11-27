@@ -11,6 +11,7 @@
 
   function check_session() {
     var win = window.parent.frames[opFrameId].contentWindow
+    console.log("RP is sending message to OP iframe...")
     win.postMessage(mes, targetOrigin);
   }
 
@@ -32,7 +33,7 @@
     stat = e.data;
 
     if (stat === "changed") {
-      console.log("data changed")
+      console.log("Logout")
       clearInterval(timerID);
       // then take the actions below...
     }

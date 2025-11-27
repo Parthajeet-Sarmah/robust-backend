@@ -122,7 +122,6 @@
   <div class="container">
     <button id="loginButton">Login with Bomboclat Auth</button>
     <button id="logoutButton" style="margin-top:20px; display:none;">Logout</button>
-
     <div class="label">Secure OAuth 2.0 + OIDC Authorization</div>
     <div class="success" id="successMsg">✅ Logged in successfully!</div>
     <div class="success error" id="errorMsg">❌ Login failed or canceled.</div>
@@ -231,10 +230,18 @@
               logoutButton.style.display = "inline-block";
 
               //Add iframes
-              document.body.innerHTML += `<iframe style="position: absolute;width:0;height:0;border:0;" id="rp" src="login-status.html"
-    frameborder="0"></iframe>
-  <iframe style="position: absolute;width:0;height:0;border:0;" id="op" src="http://localhost:9030/sessions/check"
-    frameborder="0"></iframe>`
+              const rpIframe = document.createElement("iframe");
+              rpIframe.id = "rp"
+              rpIframe.style = "pointer-events: none; position: absolute;width:0;height:0;border:0;";
+              rpIframe.src = "login-status.html";
+
+              const opIframe = document.createElement("iframe");
+              opIframe.id = "op"
+              opIframe.style = "pointer-events: none; position: absolute;width:0;height:0;border:0;";
+              opIframe.src = "http://localhost:9030/sessions/check";
+
+              document.body.appendChild(rpIframe);
+              document.body.appendChild(opIframe);
 
               if (popup) popup.close();
             })
@@ -258,6 +265,7 @@
     // OIDC LOGOUT FLOW
     // ==========================================
     logoutButton.addEventListener("click", () => {
+
       const idToken = localStorage.getItem("id_token");
       localStorage.removeItem("id_token");
 
@@ -266,14 +274,17 @@
         return;
       }
 
+      fetch("http://localhost:9030/users/logout", {
+        credentials: "include"
+      })
       // Build OIDC logout URL
-      const logoutUrl =
-        `${OIDC_END_SESSION_ENDPOINT}`
-        + `?id_token_hint=${encodeURIComponent(idToken)}`
-        + `&post_logout_redirect_uri=${encodeURIComponent(POST_LOGOUT_REDIRECT_URI)}`;
+      //const logoutUrl =
+      //  `${OIDC_END_SESSION_ENDPOINT}`
+      //  + `?id_token_hint=${encodeURIComponent(idToken)}`
+      //  + `&post_logout_redirect_uri=${encodeURIComponent(POST_LOGOUT_REDIRECT_URI)}`;
 
-      // Redirect browser — MUST be full navigation
-      window.location.href = logoutUrl;
+      //// Redirect browser — MUST be full navigation
+      //window.location.href = logoutUrl;
     });
 
   </script>

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	database "local/bomboclat-oidc-service/database"
+	"local/bomboclat-oidc-service/middlewares"
 	"local/bomboclat-oidc-service/routers"
 	"local/bomboclat-oidc-service/services"
 	utils "local/bomboclat-oidc-service/utils"
@@ -57,5 +58,5 @@ func main() {
 	router.Handle("/users/", http.StripPrefix("/users", userRouter))
 
 	log.Println("Starting server on port 9030")
-	http.ListenAndServe(":9030", router)
+	http.ListenAndServe(":9030", middlewares.CORS(router))
 }

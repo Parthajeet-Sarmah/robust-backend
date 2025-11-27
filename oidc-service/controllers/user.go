@@ -117,6 +117,27 @@ func (controller UserController) Logout(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	randomBytes := make([]byte, 128)
+
+	if _, err := rand.Read(randomBytes); err != nil {
+		log.Print("Error while reading random bytes for generating code!")
+		panic(err)
+	}
+
+	opuasValue := hex.EncodeToString(randomBytes)
+
+	//user agent state cookie
+	opuas := &http.Cookie{
+		Name:     "opuas",
+		Value:    opuasValue,
+		Domain:   "localhost",
+		Path:     "/",
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+	}
+
+	http.SetCookie(w, opuas)
+
 	w.WriteHeader(http.StatusOK)
 }
 

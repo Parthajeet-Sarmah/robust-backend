@@ -7,8 +7,8 @@ import (
 
 func CORS(next http.Handler) http.Handler {
 	allowedOrigins := map[string]bool{
-		os.Getenv("CLIENT_ORIGIN"): true,
-		os.Getenv("OIDC_BASE_URL"): true,
+		os.Getenv("CLIENT_ORIGIN"):  true,
+		os.Getenv("OAUTH_BASE_URL"): true,
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
