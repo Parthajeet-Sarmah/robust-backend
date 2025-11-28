@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	custom_errors "local/bomboclat-oidc-service/errors"
 	"local/bomboclat-oidc-service/services"
@@ -117,26 +118,32 @@ func (controller UserController) Logout(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	randomBytes := make([]byte, 128)
-
-	if _, err := rand.Read(randomBytes); err != nil {
-		log.Print("Error while reading random bytes for generating code!")
-		panic(err)
+	//session id cookie removal
+	cookie := &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Expires:  time.Unix(0, 0),
+		Secure:   true,
+		MaxAge:   -1,
+		SameSite: http.SameSiteLaxMode,
 	}
 
-	opuasValue := hex.EncodeToString(randomBytes)
-
-	//user agent state cookie
+	//user agent state cookie removal
 	opuas := &http.Cookie{
 		Name:     "opuas",
-		Value:    opuasValue,
+		Value:    "",
 		Domain:   "localhost",
 		Path:     "/",
+		Expires:  time.Unix(0, 0),
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
+		MaxAge:   -1,
 	}
 
 	http.SetCookie(w, opuas)
+	http.SetCookie(w, cookie)
 
 	w.WriteHeader(http.StatusOK)
 }

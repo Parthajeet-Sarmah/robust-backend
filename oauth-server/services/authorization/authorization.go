@@ -40,6 +40,8 @@ func (as *AuthorizationService) AuthorizeUserAndGenerateCode(
 			return nil, custom_errors.RedisGetHashError(err)
 		}
 
+		fmt.Print(res)
+
 		expiryStr, exists := res["expires_at"]
 		if !exists {
 			return nil, custom_errors.Internal("Session has no expiry", nil)

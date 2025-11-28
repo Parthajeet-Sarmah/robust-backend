@@ -37,7 +37,7 @@ func GetValueFromHash(c *redis.Client, hash string) (map[string]string, error) {
 		return nil, custom_errors.RedisGetHashError(err)
 	}
 
-	if res == nil {
+	if len(res) == 0 {
 		return nil, custom_errors.RedisGetHashNoResourceFoundError(fmt.Errorf("No resource found for the given hash: %s", hash))
 	}
 

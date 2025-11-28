@@ -20,23 +20,15 @@
   }
 
   window.addEventListener("message", async (e) => {
-    console.log("Got message from RP iframe...")
     var client_id = e.data.substr(0, e.data.lastIndexOf(' '));
     var session_state = e.data.substr(e.data.lastIndexOf(' ') + 1);
     var salt = session_state.split('.')[1];
-
-    console.log("Message from RP iframe: ", e.data)
 
     var opuas = getCookie("opuas")
 
     var ss = (await hashToken256(client_id + ' ' + e.origin + ' ' + opuas + ' ' + salt)) + '.' + salt;
 
-    console.log(client_id + " /// " + e.origin + " /// " + opuas + " /// " + salt)
-
     var stat = ''
-
-    console.log(e.data)
-    console.log(ss)
 
     if (session_state === ss) {
       stat = 'unchanged';
