@@ -20,6 +20,12 @@ func CodeChallengeDoesNotMatchError(cause error) *AppError {
 func InvalidGrantTypeError(cause error) *AppError {
 	return New("INVALID_GRANT", "Invalid grant_type provided", http.StatusBadRequest, cause)
 }
+func InvalidIDTokenError(cause error) *AppError {
+	return New("INVALID_ID_TOKEN_ERROR", "Invalid subject in ID token", http.StatusUnauthorized, cause)
+}
+func TokenIssuerMismatchError(cause error) *AppError {
+	return New("TOKEN_ISSUER_MISMATCH", "Token issuer is invalid", http.StatusInternalServerError, cause)
+}
 func TokenParsingError(cause error) *AppError {
 	return New("TOKEN_PARSING_ERROR", "Token could not be parsed", http.StatusInternalServerError, cause)
 }

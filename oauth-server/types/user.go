@@ -24,7 +24,7 @@ type UserDatabaseModelInput struct {
 }
 
 type UserProfile struct {
-	UserUUID        string `json:"id"`
+	UserUUID        string `json:"uuid"`
 	Email           string `json:"email"`
 	Username        string `json:"username"`
 	PasswordHash    string `json:"password_hash,omitempty"`

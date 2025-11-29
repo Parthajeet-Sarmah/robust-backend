@@ -16,7 +16,7 @@ func FindUserByUUID(pg *custom_types.Postgres, ctx context.Context, uuid string,
 		fields = "username, email"
 	}
 
-	query := fmt.Sprintf(`SELECT %s FROM users WHERE uuid = @uuid LIMIT 1`, fields)
+	query := fmt.Sprintf(`SELECT uuid, %s FROM users WHERE uuid = @uuid LIMIT 1`, fields)
 	args := pgx.NamedArgs{"uuid": uuid}
 	rows, err := pg.DB.Query(ctx, query, args)
 
@@ -27,6 +27,8 @@ func FindUserByUUID(pg *custom_types.Postgres, ctx context.Context, uuid string,
 	defer rows.Close()
 
 	data, err := pgx.CollectOneRow(rows, pgx.RowToStructByNameLax[models.UserDatabaseModel])
+
+	fmt.Print(data)
 
 	if err != nil {
 		return nil, err

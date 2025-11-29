@@ -1,10 +1,29 @@
 package custom_types
 
 import (
+	"net/http"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+type IDTokenClaims struct {
+	Iss   string `json:"iss"`
+	Sub   string `json:"sub"`
+	Aud   string `json:"aud"`
+	Exp   int64  `json:"exp"`
+	Iat   int64  `json:"iat"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
+	jwt.RegisteredClaims
+}
+
+type EndSessionInput struct {
+	UserCookie            *http.Cookie
+	IdTokenHint           string
+	PostLogoutRedirectUri string
+}
 
 type IntrospectionResponse struct {
 	ClientID  string   `json:"client_id"`
@@ -41,7 +60,7 @@ type UserRegistrationDetails struct {
 }
 
 type UserProfile struct {
-	UserUUID        string `json:"id"`
+	UserUUID        string `json:"uuid"`
 	Email           string `json:"email"`
 	Username        string `json:"username"`
 	PasswordHash    string `json:"password_hash,omitempty"`

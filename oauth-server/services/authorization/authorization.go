@@ -269,6 +269,8 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput, a
 
 					return nil, custom_errors.TokenParsingError(nil)
 				}
+			} else {
+				return nil, custom_errors.TokenParsingError(nil)
 			}
 		}
 
@@ -310,6 +312,8 @@ func (as *AuthorizationService) GenerateToken(m *custom_types.TokenModelInput, a
 			if err != nil {
 				return nil, err
 			}
+
+			fmt.Print(string(body))
 
 			err = json.Unmarshal(body, &user)
 
