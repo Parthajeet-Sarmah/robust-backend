@@ -76,19 +76,19 @@ func main() {
 
 		config := custom_types.OpenIdConfiguration{
 			Issuer:                            os.Getenv("OIDC_BASE_URL"),
-			UserInfoEndpoint:                  os.Getenv("OIDC_BASE_URL") + "userinfo",
-			JwksUri:                           os.Getenv("OIDC_BASE_URL") + ".well-known/jwks.json",
-			AuthorizationEndpoint:             os.Getenv("OAUTH_BASE_URL") + "authorize",
-			TokenEndpoint:                     os.Getenv("OAUTH_BASE_URL") + "authorize/token",
-			RegistrationEndpoint:              os.Getenv("OAUTH_BASE_URL") + "clients/register",
-			RevocationEndpoint:                os.Getenv("OAUTH_BASE_URL") + "authorize/revoke",
-			IntrospectionEndpoint:             os.Getenv("OAUTH_BASE_URL") + "introspect",
+			UserInfoEndpoint:                  os.Getenv("OIDC_BASE_URL") + "/userinfo",
+			JwksUri:                           os.Getenv("OIDC_BASE_URL") + "/.well-known/jwks.json",
+			AuthorizationEndpoint:             os.Getenv("OAUTH_BASE_URL") + "/authorize",
+			TokenEndpoint:                     os.Getenv("OAUTH_BASE_URL") + "/authorize/token",
+			RegistrationEndpoint:              os.Getenv("OAUTH_BASE_URL") + "/clients/register",
+			RevocationEndpoint:                os.Getenv("OAUTH_BASE_URL") + "/authorize/revoke",
+			IntrospectionEndpoint:             os.Getenv("OAUTH_BASE_URL") + "/introspect",
 			ScopesSupported:                   []string{"openid", "profile", "email"},
 			ResponseTypesSupported:            []string{"code"},
 			GrantTypesSupported:               []string{"authorization_code", "refresh_token"},
 			SubjectTypesSupported:             []string{"public"},
 			IdTokenSigningAlgValuesSupported:  []string{"RS256"},
-			TokenEndpointAuthMethodsSupported: []string{"client_secret_basic"},
+			TokenEndpointAuthMethodsSupported: []string{"client_secret_basic", "client_secret_post", "private_key_jwt", "none"},
 			CheckSessionIframe:                os.Getenv("OIDC_BASE_URL") + "/login-status.html",
 		}
 

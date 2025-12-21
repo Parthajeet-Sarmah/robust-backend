@@ -31,6 +31,7 @@ func (controller SessionController) EndSession(w http.ResponseWriter, r *http.Re
 	idTokenHint := r.URL.Query().Get("id_token_hint")
 	postLogoutRedirectUri := r.URL.Query().Get("post_logout_redirect_uri")
 
+	// TODO: Add postLogoutRedirectUri to schema
 	m := custom_types.EndSessionInput{
 		UserCookie:            userCookie,
 		IdTokenHint:           idTokenHint,
